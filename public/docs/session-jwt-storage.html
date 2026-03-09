@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세션 vs JWT · 쿠키 vs 스토리지 — 인증 완전 정복</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Oswald:wght@600;700&display=swap');
+:root {
+  --bg:#05080f; --surf:#090d1a; --surf2:#0d1422; --border:#151e32;
+  --text:#e0ebff; --dim:#6478a0; --muted:#263650;
+  --session:#10b981; --sessiond:rgba(16,185,129,0.10);
+  --jwt:#8b5cf6;    --jwtd:rgba(139,92,246,0.10);
+  --cookie:#f59e0b; --cookied:rgba(245,158,11,0.10);
+  --ls:#06b6d4;     --lsd:rgba(6,182,212,0.10);
+  --mem:#f472b6;    --memd:rgba(244,114,182,0.10);
+  --good:#4ade80; --warn:#fbbf24; --bad:#f87171;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Oswald',sans-serif;
+  --sans:'Noto Sans KR',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 55% 40% at 10% 15%,rgba(16,185,129,.05) 0%,transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 85%,rgba(139,92,246,.05) 0%,transparent 55%);
+  pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(99,131,255,0.015) 1px,transparent 1px),linear-gradient(90deg,rgba(99,131,255,0.015) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none;z-index:0}
+.wrap{max-width:1080px;margin:0 auto;padding:56px 20px 100px;position:relative;z-index:1}
+
+/* ── Hero ── */
+.hero{text-align:center;margin-bottom:64px}
+.hero-tag{font-family:var(--mono);font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--muted);margin-bottom:18px;opacity:0;animation:up .5s ease forwards .1s}
+.hero h1{font-family:var(--display);font-size:clamp(36px,7vw,72px);font-weight:700;line-height:1.35;letter-spacing:2px;margin-bottom:16px;opacity:0;animation:up .5s ease forwards .25s}
+.hero h1 .hs{color:var(--session)}.hero h1 .hj{color:var(--jwt)}
+.hero-sub{font-size:14px;color:var(--dim);line-height:1.9;max-width:540px;margin:0 auto;opacity:0;animation:up .5s ease forwards .4s}
+
+/* ── 공통 섹션 ── */
+.section{margin-bottom:64px;opacity:0;animation:up .5s ease forwards}
+.s1{animation-delay:.5s}.s2{animation-delay:.6s}.s3{animation-delay:.65s}
+.s4{animation-delay:.7s}.s5{animation-delay:.75s}.s6{animation-delay:.8s}
+.sec-title{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:1px;margin-bottom:6px;display:flex;align-items:center;gap:12px}
+.sec-sub{font-size:13px;color:var(--dim);margin-bottom:22px;line-height:1.7}
+.bar{width:3px;height:24px;border-radius:2px;flex-shrink:0}
+
+/* ── 코드 박스 ── */
+.code-box{background:#030508;border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.9;overflow-x:auto}
+.ck{color:#93c5fd}.cv{color:#fde68a}.cs{color:#86efac}.cc{color:var(--muted)}
+.csn{color:var(--session)}.cj{color:var(--jwt)}.cck{color:var(--cookie)}.cls{color:var(--ls)}.cm{color:var(--mem)}
+.cok{color:var(--good)}.cerr{color:var(--bad)}.cwarn{color:var(--warn)}
+
+/* ── Part 1: 세션 vs JWT ── */
+.sv-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.sv-grid{grid-template-columns:1fr}}
+
+.auth-card{border-radius:16px;border:1px solid;padding:24px}
+.auth-card.sc{border-color:rgba(16,185,129,.3);background:var(--sessiond)}
+.auth-card.jc{border-color:rgba(139,92,246,.3);background:var(--jwtd)}
+.auth-card-title{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:2px;margin-bottom:16px;line-height:1.4}
+
+/* 흐름 스텝 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:flex;gap:14px;position:relative}
+.step:not(:last-child)::after{content:'';position:absolute;left:18px;top:40px;bottom:0;width:1px;background:var(--border)}
+.step-n{width:36px;height:36px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;flex-shrink:0;background:var(--bg);z-index:1}
+.step-body{padding:0 0 20px 0;flex:1}
+.step-title{font-size:12px;font-weight:700;margin-bottom:5px}
+.step-desc{font-size:11.5px;color:var(--dim);line-height:1.7;margin-bottom:6px}
+
+/* ── 대형 비교 테이블 ── */
+.big-table-wrap{border-radius:16px;border:1px solid var(--border);overflow:hidden}
+.big-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.big-table th{padding:14px 18px;text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.big-table th.th-cat{color:var(--muted);width:140px;background:var(--surf2)}
+.big-table th.th-s{color:var(--session);background:rgba(16,185,129,.06)}
+.big-table th.th-j{color:var(--jwt);background:rgba(139,92,246,.06)}
+.big-table td{padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:top;line-height:1.7}
+.big-table td.td-cat{font-weight:700;color:var(--dim);font-size:12px;background:rgba(255,255,255,.01)}
+.big-table td.td-s{background:rgba(16,185,129,.03)}
+.big-table td.td-j{background:rgba(139,92,246,.03)}
+.big-table tr:hover td{filter:brightness(1.1)}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;border:1px solid;margin-bottom:2px}
+.tg{border-color:rgba(74,222,128,.4);color:var(--good);background:rgba(74,222,128,.08)}
+.tw{border-color:rgba(251,191,36,.4);color:var(--warn);background:rgba(251,191,36,.08)}
+.tb{border-color:rgba(248,113,113,.4);color:var(--bad);background:rgba(248,113,113,.08)}
+
+/* ── Part 2: 저장/전달 방식 ── */
+.storage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:720px){.storage-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.storage-grid{grid-template-columns:1fr}}
+
+.st-card{border-radius:16px;border:1px solid var(--border);background:var(--surf);overflow:hidden;transition:transform .2s}
+.st-card:hover{transform:translateY(-3px)}
+.st-card-head{padding:18px 20px 14px;border-bottom:1px solid var(--border)}
+.st-icon{font-size:26px;margin-bottom:8px}
+.st-name{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:1px;line-height:1.4;margin-bottom:4px}
+.st-tagline{font-size:11px;color:var(--dim)}
+.st-card-body{padding:16px 20px}
+.st-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11.5px;gap:8px}
+.st-row:last-child{border-bottom:none}
+.st-label{color:var(--dim);flex-shrink:0}
+.st-val{text-align:right;line-height:1.5}
+.st-footer{padding:12px 20px;background:rgba(0,0,0,.2);border-top:1px solid var(--border);font-size:11px;color:var(--dim);line-height:1.65}
+
+/* ── 저장소 비교 테이블 ── */
+.storage-cmp{border-radius:16px;border:1px solid var(--border);overflow:hidden}
+.scmp-table{width:100%;border-collapse:collapse;font-size:12px}
+.scmp-table th{padding:12px 16px;text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:var(--surf2)}
+.scmp-table td{padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle;line-height:1.6}
+.scmp-table tr:hover td{background:rgba(255,255,255,.02)}
+.scmp-table td:first-child{font-weight:700;font-family:var(--mono);font-size:11px}
+
+/* ── 실전 권장 패턴 ── */
+.pattern-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.pattern-grid{grid-template-columns:1fr}}
+.pattern-card{border-radius:14px;padding:22px;border:1px solid}
+.pattern-card.ps{border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.05)}
+.pattern-card.pj{border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.05)}
+.pt{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:1px;margin-bottom:12px;line-height:1.4}
+
+/* ── 면접 포인트 ── */
+.tips-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.tip-card{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:20px;transition:transform .2s,box-shadow .2s}
+.tip-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.4)}
+.ti{font-size:22px;margin-bottom:10px}
+.tt{font-size:13px;font-weight:700;margin-bottom:7px}
+.td{font-size:12px;color:var(--dim);line-height:1.8}
+
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <p class="hero-tag">인증 방식 · 저장소 · 보안 · 면접 필수</p>
+  <h1><span class="hs">세션</span> vs <span class="hj">JWT</span><br>쿠키 vs 스토리지</h1>
+  <p class="hero-sub">인증 상태를 <strong style="color:var(--text)">서버가 관리하는가(세션) vs 토큰으로 자증하는가(JWT)</strong>, 그리고 토큰을 <strong style="color:var(--text)">어디에 저장하고 어떻게 전달하는가</strong>의 모든 트레이드오프</p>
+</div>
+
+<!-- ════════════════════════════════════════
+     PART 1: 세션 vs JWT
+════════════════════════════════════════ -->
+<div class="section s1">
+  <div class="sec-title">
+    <div class="bar" style="background:linear-gradient(var(--session),var(--jwt))"></div>
+    PART 1 — 세션 vs JWT
+  </div>
+  <div class="sec-sub">인증 상태를 어디서 관리하는가의 차이. 서버가 기억하는가(Stateful) vs 토큰이 자증하는가(Stateless)</div>
+
+  <!-- 흐름 나란히 -->
+  <div class="sv-grid" style="margin-bottom:20px">
+
+    <!-- 세션 흐름 -->
+    <div class="auth-card sc">
+      <div class="auth-card-title" style="color:var(--session)">🗄️ SESSION</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-n" style="border-color:var(--session);color:var(--session)">1</div>
+          <div class="step-body">
+            <div class="step-title">로그인 요청</div>
+            <div class="step-desc">ID/PW를 서버로 전송</div>
+            <div class="code-box" style="font-size:11px">POST /login
+{id: "kilian", pw: "***"}</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--session);color:var(--session)">2</div>
+          <div class="step-body">
+            <div class="step-title">서버 — 세션 생성 및 저장</div>
+            <div class="step-desc">서버 메모리 / Redis에 세션 데이터 저장</div>
+            <div class="code-box" style="font-size:11px"><span class="cc"># 서버 세션 저장소 (Redis)</span>
+sessions[<span class="csn">"sid_abc123"</span>] = {
+  userId: <span class="cv">42</span>, role: <span class="cs">"admin"</span>,
+  createdAt: <span class="cs">"2024-01-15"</span>
+}</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--session);color:var(--session)">3</div>
+          <div class="step-body">
+            <div class="step-title">Session ID만 쿠키로 전달</div>
+            <div class="step-desc">실제 데이터는 서버에, ID만 클라이언트로</div>
+            <div class="code-box" style="font-size:11px">Set-Cookie: <span class="csn">JSESSIONID=sid_abc123</span>;
+  HttpOnly; Secure; SameSite=Lax</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--session);color:var(--session)">4</div>
+          <div class="step-body">
+            <div class="step-title">이후 요청마다 세션 조회</div>
+            <div class="step-desc">서버가 저장소를 조회해 사용자 확인</div>
+            <div class="code-box" style="font-size:11px">Cookie: <span class="csn">JSESSIONID=sid_abc123</span>
+<span class="cc"># 서버: 저장소 조회 → userId 확인</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--session);color:var(--session)">5</div>
+          <div class="step-body" style="padding-bottom:0">
+            <div class="step-title">로그아웃 — 즉시 무효화</div>
+            <div class="step-desc">서버에서 세션 삭제 → 쿠키가 남아있어도 인증 실패</div>
+            <div class="code-box" style="font-size:11px"><span class="cc"># sessions["sid_abc123"] 삭제</span>
+<span class="cok">→ 즉시 로그아웃 완료</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JWT 흐름 -->
+    <div class="auth-card jc">
+      <div class="auth-card-title" style="color:var(--jwt)">🔐 JWT</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-n" style="border-color:var(--jwt);color:var(--jwt)">1</div>
+          <div class="step-body">
+            <div class="step-title">로그인 요청</div>
+            <div class="step-desc">ID/PW를 서버로 전송</div>
+            <div class="code-box" style="font-size:11px">POST /login
+{id: "kilian", pw: "***"}</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--jwt);color:var(--jwt)">2</div>
+          <div class="step-body">
+            <div class="step-title">서버 — JWT 생성 (저장소 없음)</div>
+            <div class="step-desc">사용자 정보를 토큰에 담고 비밀키로 서명</div>
+            <div class="code-box" style="font-size:11px"><span class="cc"># 서버 저장소 불필요!</span>
+payload = {sub:<span class="cv">42</span>, role:<span class="cs">"admin"</span>,
+           exp:<span class="cv">1700003600</span>}
+token = sign(payload, <span class="cj">SECRET_KEY</span>)</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--jwt);color:var(--jwt)">3</div>
+          <div class="step-body">
+            <div class="step-title">AccessToken + RefreshToken 발급</div>
+            <div class="step-desc">두 토큰을 클라이언트에 전달</div>
+            <div class="code-box" style="font-size:11px">{
+  accessToken:  <span class="cj">"eyJ...짧은만료(15분)"</span>,
+  refreshToken: <span class="cj">"eyJ...긴만료(7일)"</span>
+}</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--jwt);color:var(--jwt)">4</div>
+          <div class="step-body">
+            <div class="step-title">이후 요청 — 서명 검증만</div>
+            <div class="step-desc">저장소 조회 없이 서명과 만료시간만 검증</div>
+            <div class="code-box" style="font-size:11px">Authorization: Bearer <span class="cj">eyJhbGci...</span>
+<span class="cc"># 서버: 서명 검증 → payload 추출</span>
+<span class="cc"># DB 조회 없음 → 빠름</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n" style="border-color:var(--jwt);color:var(--jwt)">5</div>
+          <div class="step-body" style="padding-bottom:0">
+            <div class="step-title">로그아웃 — 클라이언트에서 토큰 삭제</div>
+            <div class="step-desc">서버는 토큰을 기억 못함 → 만료 전까지 유효</div>
+            <div class="code-box" style="font-size:11px"><span class="cc"># 클라이언트: 토큰 삭제</span>
+<span class="cerr">⚠ 탈취된 토큰은 만료까지 유효</span>
+<span class="cc"># 해결: 짧은 만료 + 블랙리스트 DB</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 세션 vs JWT 비교 테이블 -->
+  <div class="big-table-wrap">
+    <table class="big-table">
+      <thead>
+        <tr>
+          <th class="th-cat">항목</th>
+          <th class="th-s">🗄️ 세션 (Session)</th>
+          <th class="th-j">🔐 JWT</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-cat">상태 관리</td>
+          <td class="td-s"><span class="tag tw">Stateful</span><br>서버가 상태 보관. 매 요청마다 저장소 조회 필요</td>
+          <td class="td-j"><span class="tag tg">Stateless</span><br>서버 저장소 불필요. 토큰 자체가 상태를 가짐</td>
+        </tr>
+        <tr>
+          <td class="td-cat">저장 위치</td>
+          <td class="td-s">서버 메모리 / Redis / DB</td>
+          <td class="td-j">클라이언트 (쿠키 · 메모리 · localStorage)</td>
+        </tr>
+        <tr>
+          <td class="td-cat">서버 확장성</td>
+          <td class="td-s"><span class="tag tw">낮음</span><br>다중 서버 시 세션 공유 필요 (Redis 등 공유 저장소)</td>
+          <td class="td-j"><span class="tag tg">높음</span><br>어느 서버든 서명만 검증하면 됨. MSA에 적합</td>
+        </tr>
+        <tr>
+          <td class="td-cat">즉시 로그아웃</td>
+          <td class="td-s"><span class="tag tg">가능</span><br>서버에서 세션 삭제 → 즉시 무효화</td>
+          <td class="td-j"><span class="tag tb">어려움</span><br>발급된 토큰은 만료까지 유효.<br>블랙리스트 DB로 해결하면 Stateful이 됨</td>
+        </tr>
+        <tr>
+          <td class="td-cat">서버 부하</td>
+          <td class="td-s"><span class="tag tw">높음</span><br>매 요청마다 저장소 I/O 발생</td>
+          <td class="td-j"><span class="tag tg">낮음</span><br>CPU 서명 검증만. 저장소 I/O 없음</td>
+        </tr>
+        <tr>
+          <td class="td-cat">전송 데이터</td>
+          <td class="td-s"><span class="tag tg">작음</span><br>Session ID만 전송 (수십 바이트)</td>
+          <td class="td-j"><span class="tag tw">큼</span><br>토큰 자체 전송 (수백 바이트, payload 포함)</td>
+        </tr>
+        <tr>
+          <td class="td-cat">보안 정보<br>갱신</td>
+          <td class="td-s"><span class="tag tg">즉시 반영</span><br>저장소 수정하면 다음 요청부터 적용</td>
+          <td class="td-j"><span class="tag tb">지연 반영</span><br>권한 변경·탈퇴해도 토큰 만료 전까지 유효</td>
+        </tr>
+        <tr>
+          <td class="td-cat">적합한 환경</td>
+          <td class="td-s">전통 웹앱, 단일 서버,<br>금융·보안 민감 서비스</td>
+          <td class="td-j">REST API, SPA, 모바일앱,<br>마이크로서비스, 다중 도메인 인증</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PART 2: 저장 및 전달 방식
+════════════════════════════════════════ -->
+<div class="section s3">
+  <div class="sec-title">
+    <div class="bar" style="background:linear-gradient(var(--cookie),var(--ls))"></div>
+    PART 2 — 저장 · 전달 방식
+  </div>
+  <div class="sec-sub">토큰(세션ID · JWT)을 어디에 저장하고, 서버에 어떻게 전달하는가</div>
+
+  <!-- 저장소 카드 3종 -->
+  <div class="storage-grid" style="margin-bottom:20px">
+
+    <!-- 쿠키 -->
+    <div class="st-card">
+      <div class="st-card-head" style="border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.05)">
+        <div class="st-icon">🍪</div>
+        <div class="st-name" style="color:var(--cookie)">COOKIE</div>
+        <div class="st-tagline">브라우저가 자동으로 관리하는 저장소</div>
+      </div>
+      <div class="st-card-body">
+        <div class="st-row">
+          <span class="st-label">저장 위치</span>
+          <span class="st-val" style="color:var(--cookie)">브라우저 쿠키 저장소</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">서버 전달</span>
+          <span class="st-val"><code style="font-family:var(--mono);font-size:10px">Cookie</code> 헤더 자동 첨부</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">JS 접근</span>
+          <span class="st-val"><span class="tag tg">HttpOnly 시 차단</span></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">만료 설정</span>
+          <span class="st-val">Max-Age / Expires 지정 가능</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">용량</span>
+          <span class="st-val">약 4KB</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">XSS 위험</span>
+          <span class="st-val"><span class="tag tg">HttpOnly로 방어</span></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">CSRF 위험</span>
+          <span class="st-val"><span class="tag tw">자동 전송 → 있음</span><br><span style="font-size:10px;color:var(--dim)">SameSite로 방어</span></span>
+        </div>
+      </div>
+      <div class="st-footer">
+        <strong style="color:var(--cookie)">✓ 권장 사용:</strong> 세션 ID, RefreshToken<br>
+        HttpOnly + Secure + SameSite=Lax 조합 필수
+      </div>
+    </div>
+
+    <!-- localStorage -->
+    <div class="st-card">
+      <div class="st-card-head" style="border-color:rgba(6,182,212,.25);background:rgba(6,182,212,.05)">
+        <div class="st-icon">📦</div>
+        <div class="st-name" style="color:var(--ls)">LOCAL<br>STORAGE</div>
+        <div class="st-tagline">탭·창 간 공유, 영구 저장</div>
+      </div>
+      <div class="st-card-body">
+        <div class="st-row">
+          <span class="st-label">저장 위치</span>
+          <span class="st-val" style="color:var(--ls)">브라우저 localStorage</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">서버 전달</span>
+          <span class="st-val">JS로 직접 헤더에 첨부<br><code style="font-family:var(--mono);font-size:10px">Authorization: Bearer ...</code></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">JS 접근</span>
+          <span class="st-val"><span class="tag tb">항상 가능</span></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">만료 설정</span>
+          <span class="st-val">없음 (직접 구현 필요)</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">용량</span>
+          <span class="st-val">약 5MB</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">XSS 위험</span>
+          <span class="st-val"><span class="tag tb">높음 — JS로 탈취 가능</span></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">CSRF 위험</span>
+          <span class="st-val"><span class="tag tg">없음 — 자동 전송 X</span></span>
+        </div>
+      </div>
+      <div class="st-footer">
+        <strong style="color:var(--bad)">✗ AccessToken 저장 금지</strong><br>
+        XSS 공격 시 토큰 즉시 탈취됨 — 사용 비권장
+      </div>
+    </div>
+
+    <!-- 메모리 -->
+    <div class="st-card">
+      <div class="st-card-head" style="border-color:rgba(244,114,182,.25);background:rgba(244,114,182,.05)">
+        <div class="st-icon">⚡</div>
+        <div class="st-name" style="color:var(--mem)">MEMORY<br>(JS 변수)</div>
+        <div class="st-tagline">페이지 새로고침 시 초기화</div>
+      </div>
+      <div class="st-card-body">
+        <div class="st-row">
+          <span class="st-label">저장 위치</span>
+          <span class="st-val" style="color:var(--mem)">JS 변수 / React State</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">서버 전달</span>
+          <span class="st-val">JS로 직접 헤더에 첨부<br><code style="font-family:var(--mono);font-size:10px">Authorization: Bearer ...</code></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">JS 접근</span>
+          <span class="st-val"><span class="tag tg">같은 스코프만</span></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">만료 설정</span>
+          <span class="st-val">토큰 exp 필드 의존</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">용량</span>
+          <span class="st-val">제한 없음</span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">XSS 위험</span>
+          <span class="st-val"><span class="tag tg">상대적으로 낮음</span></span>
+        </div>
+        <div class="st-row">
+          <span class="st-label">CSRF 위험</span>
+          <span class="st-val"><span class="tag tg">없음 — 자동 전송 X</span></span>
+        </div>
+      </div>
+      <div class="st-footer">
+        <strong style="color:var(--good)">✓ AccessToken 권장 저장소</strong><br>
+        새로고침 시 사라짐 → RefreshToken으로 재발급
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 저장소 전달 방식 비교 테이블 -->
+  <div class="storage-cmp">
+    <table class="scmp-table">
+      <thead>
+        <tr>
+          <th>저장소</th>
+          <th>서버 전달 방법</th>
+          <th>자동 전송</th>
+          <th>XSS</th>
+          <th>CSRF</th>
+          <th>새로고침 유지</th>
+          <th>권장 용도</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--cookie)">🍪 Cookie<br>(HttpOnly)</td>
+          <td>Cookie 헤더 <strong>자동 첨부</strong></td>
+          <td><span class="tag tg">✓ 자동</span></td>
+          <td><span class="tag tg">방어됨</span></td>
+          <td><span class="tag tw">위험<br>(SameSite 필요)</span></td>
+          <td><span class="tag tg">유지됨</span></td>
+          <td style="color:var(--dim)">세션 ID,<br>RefreshToken</td>
+        </tr>
+        <tr>
+          <td style="color:var(--ls)">📦 localStorage</td>
+          <td>JS로 Authorization 헤더 직접 첨부</td>
+          <td><span class="tag tg">✓ 없음</span></td>
+          <td><span class="tag tb">취약</span></td>
+          <td><span class="tag tg">안전</span></td>
+          <td><span class="tag tg">유지됨</span></td>
+          <td style="color:var(--bad)">비권장</td>
+        </tr>
+        <tr>
+          <td style="color:var(--mem)">⚡ 메모리<br>(JS 변수)</td>
+          <td>JS로 Authorization 헤더 직접 첨부</td>
+          <td><span class="tag tg">✓ 없음</span></td>
+          <td><span class="tag tg">상대적<br>안전</span></td>
+          <td><span class="tag tg">안전</span></td>
+          <td><span class="tag tb">초기화됨</span></td>
+          <td style="color:var(--dim)">AccessToken</td>
+        </tr>
+        <tr>
+          <td style="color:var(--dim)">📋 session<br>Storage</td>
+          <td>JS로 Authorization 헤더 직접 첨부</td>
+          <td><span class="tag tg">✓ 없음</span></td>
+          <td><span class="tag tb">취약</span></td>
+          <td><span class="tag tg">안전</span></td>
+          <td><span class="tag tb">탭 종료 시<br>초기화</span></td>
+          <td style="color:var(--dim)">임시 데이터</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── 실전 권장 패턴 ── -->
+<div class="section s5">
+  <div class="sec-title">
+    <div class="bar" style="background:linear-gradient(var(--good),var(--session))"></div>
+    실전 권장 패턴
+  </div>
+  <div class="sec-sub">세션과 JWT 각각의 실무 최적 구성</div>
+  <div class="pattern-grid">
+    <div class="pattern-card ps">
+      <div class="pt" style="color:var(--session)">🗄️ 세션 방식 권장 구성</div>
+      <div class="code-box" style="font-size:11px">
+<span class="cc"># 1. 로그인 성공</span>
+<span class="csn">SESSION_ID</span> 생성 → <span class="csn">Redis</span>에 저장
+
+<span class="cc"># 2. 클라이언트 전달</span>
+Set-Cookie: <span class="cck">JSESSIONID=sid_abc</span>;
+  <span class="csn">HttpOnly</span>; <span class="csn">Secure</span>; <span class="csn">SameSite=Lax</span>
+
+<span class="cc"># 3. 다중 서버 확장 시</span>
+모든 서버 → 공유 <span class="csn">Redis</span> 클러스터 연결
+
+<span class="cc"># 4. 로그아웃</span>
+Redis에서 sid_abc 삭제 → 즉시 무효화
+      </div>
+    </div>
+    <div class="pattern-card pj">
+      <div class="pt" style="color:var(--jwt)">🔐 JWT 권장 구성 (Rotation 포함)</div>
+      <div class="code-box" style="font-size:11px">
+<span class="cc"># 1. AccessToken → 메모리 저장</span>
+<span class="cm">window.__accessToken</span> = <span class="cj">"eyJ...15분 만료"</span>
+
+<span class="cc"># 2. RefreshToken → HttpOnly 쿠키</span>
+Set-Cookie: <span class="cck">refreshToken=eyJ...</span>;
+  <span class="cj">HttpOnly</span>; <span class="cj">Secure</span>; SameSite=Strict
+
+<span class="cc"># 3. 만료 시 자동 갱신 (Rotation)</span>
+POST /auth/refresh (RefreshToken 전송)
+→ 기존 RefreshToken <span class="cerr">무효화</span>
+→ 새 AccessToken + <span class="cok">새 RefreshToken 발급</span>
+
+<span class="cc"># 4. RefreshToken 재사용 감지 시</span>
+→ 해당 유저 <span class="cerr">전체 로그아웃</span> (탈취 감지)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 면접 핵심 포인트 ── -->
+<div class="section s6">
+  <div class="sec-title">
+    <div class="bar" style="background:linear-gradient(var(--jwt),var(--good))"></div>
+    🎯 면접 핵심 포인트
+  </div>
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="ti">🔄</div>
+      <div class="tt" style="color:var(--session)">세션이 다중 서버에서 문제가 되는 이유</div>
+      <div class="td">서버 A에서 로그인해 세션을 만들었는데, 다음 요청이 서버 B로 가면 세션이 없어서 인증 실패합니다. Redis 같은 공유 세션 저장소로 해결합니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">⏱️</div>
+      <div class="tt" style="color:var(--jwt)">JWT 로그아웃이 어려운 이유</div>
+      <div class="td">서버가 발급한 JWT를 저장하지 않아서 취소할 방법이 없습니다. 만료(exp)까지 유효합니다. 해결책은 ① AccessToken 만료를 짧게 ② 블랙리스트 DB 운용입니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🍪</div>
+      <div class="tt" style="color:var(--cookie)">쿠키 HttpOnly가 왜 중요한가</div>
+      <div class="td">HttpOnly 없으면 JS에서 <code style="font-family:var(--mono)">document.cookie</code>로 접근 가능합니다. XSS 공격 시 쿠키에 담긴 세션ID·토큰이 즉시 탈취됩니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🚫</div>
+      <div class="tt" style="color:var(--ls)">localStorage에 토큰 저장이 위험한 이유</div>
+      <div class="td">JS로 자유롭게 접근 가능해서 XSS 공격 한 번으로 모든 사용자의 토큰을 탈취할 수 있습니다. AccessToken은 메모리에, RefreshToken은 HttpOnly 쿠키에 저장합니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🛡️</div>
+      <div class="tt" style="color:var(--warn)">SameSite 쿠키 속성이 해결하는 것</div>
+      <div class="td">외부 사이트에서 유발된 요청에 쿠키를 자동 전송하지 않게 막아 CSRF를 방어합니다. <strong style="color:var(--text)">Strict</strong>(완전 차단) / <strong style="color:var(--text)">Lax</strong>(GET만 허용) / <strong style="color:var(--text)">None</strong>(항상 전송).</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🔁</div>
+      <div class="tt" style="color:var(--jwt)">Refresh Token Rotation이란</div>
+      <div class="td">RefreshToken을 사용할 때마다 새 RefreshToken으로 교체합니다. 이전 RefreshToken을 재사용하면 탈취로 간주하고 해당 유저 전체 세션을 강제 로그아웃합니다.</div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

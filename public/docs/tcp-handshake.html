@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCP Handshake — 연결 수립과 해제</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #060810;
+    --surface: #0c1020;
+    --surface2: #111827;
+    --border: #1c2a40;
+    --c3: #22d3ee;   /* 3way 색 */
+    --c3d: rgba(34,211,238,0.12);
+    --c4: #fb7185;   /* 4way 색 */
+    --c4d: rgba(251,113,133,0.12);
+    --fin: #fb7185;
+    --syn: #22d3ee;
+    --ack: #a3e635;
+    --wait: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #4b6080;
+    --green: #22c55e;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 50% 35% at 15% 15%, rgba(34,211,238,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 35% at 85% 85%, rgba(251,113,133,0.05) 0%, transparent 60%);
+    pointer-events:none; z-index:0;
+  }
+
+  .wrap { max-width:1000px; margin:0 auto; padding:52px 20px 80px; position:relative; z-index:1; }
+
+  /* ── Hero ── */
+  .hero { text-align:center; margin-bottom:52px; }
+  .hero-tag {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; letter-spacing:4px; text-transform:uppercase;
+    color:var(--muted); margin-bottom:14px;
+    opacity:0; animation:up .5s ease forwards .1s;
+  }
+  .hero h1 {
+    font-size:clamp(26px,5vw,44px); font-weight:900; line-height:1.2; margin-bottom:12px;
+    opacity:0; animation:up .5s ease forwards .3s;
+  }
+  .t3 { color:var(--c3); } .t4 { color:var(--c4); }
+  .hero p { font-size:14px; color:var(--muted); line-height:1.8; opacity:0; animation:up .5s ease forwards .5s; }
+
+  /* ── 섹션 공통 ── */
+  .section { margin-bottom:52px; opacity:0; animation:up .5s ease forwards; }
+  .s1{animation-delay:.6s} .s2{animation-delay:.7s} .s3{animation-delay:.8s} .s4{animation-delay:.9s} .s5{animation-delay:1s}
+
+  .sec-title {
+    font-size:17px; font-weight:700; margin-bottom:22px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .sec-title .bar {
+    width:4px; height:18px; border-radius:2px;
+    background:linear-gradient(to bottom, var(--c3), var(--c4));
+  }
+  .sec-title .badge {
+    font-size:11px; font-family:'JetBrains Mono',monospace; font-weight:700;
+    padding:3px 10px; border-radius:20px;
+  }
+  .b3 { background:var(--c3d); border:1px solid var(--c3); color:var(--c3); }
+  .b4 { background:var(--c4d); border:1px solid var(--c4); color:var(--c4); }
+
+  /* ── 메인 다이어그램 박스 ── */
+  .diagram-box {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:28px 24px;
+  }
+  .diagram-box.three { border-top:3px solid var(--c3); }
+  .diagram-box.four  { border-top:3px solid var(--c4); }
+
+  /* ── 피어 헤더 ── */
+  .peers {
+    display:grid;
+    grid-template-columns:130px 1fr 130px;
+    align-items:start;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .peer {
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    padding-bottom:12px;
+    border-bottom:2px dashed var(--border);
+  }
+  .peer-icon {
+    width:56px; height:56px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px;
+  }
+  .peer-name { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; }
+  .peer-state {
+    font-size:10px; padding:3px 10px; border-radius:20px;
+    font-family:'JetBrains Mono',monospace; font-weight:700;
+    transition:all .4s ease;
+    min-width:80px; text-align:center;
+  }
+
+  /* ── 타임라인 ── */
+  .timeline {
+    display:grid;
+    grid-template-columns:130px 1fr 130px;
+    gap:0;
+    position:relative;
+    min-height:60px;
+  }
+
+  .tl-side {
+    display:flex; flex-direction:column;
+    align-items:center;
+    gap:0;
+    position:relative;
+  }
+  .tl-side::after {
+    content:''; position:absolute;
+    left:50%; top:0; bottom:0; width:2px;
+    background:linear-gradient(to bottom, var(--border), transparent);
+    transform:translateX(-50%);
+  }
+
+  .tl-center {
+    display:flex; flex-direction:column;
+    gap:2px;
+    padding:8px 0;
+    position:relative;
+  }
+
+  /* ── 화살표 행 ── */
+  .arrow-row {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px;
+    opacity:0; transform:translateY(6px);
+    transition:opacity .45s ease, transform .45s ease;
+    border-radius:8px;
+  }
+  .arrow-row.show { opacity:1; transform:translateY(0); }
+  .arrow-row.right { flex-direction:row; }
+  .arrow-row.left  { flex-direction:row-reverse; }
+
+  .arrow-row:hover { background:rgba(255,255,255,0.025); }
+
+  .ar-flag {
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; font-weight:700;
+    padding:4px 10px; border-radius:6px;
+    white-space:nowrap; flex-shrink:0;
+  }
+  .ar-line {
+    flex:1; height:2px; border-radius:2px;
+    position:relative;
+  }
+  .ar-line::after {
+    content:''; position:absolute;
+    top:50%; transform:translateY(-50%);
+    width:100%; height:100%;
+    border-radius:2px;
+    background:inherit;
+    filter:blur(3px); opacity:.6;
+  }
+  .ar-tip { font-size:18px; line-height:1; flex-shrink:0; }
+  .ar-desc {
+    position:absolute;
+    font-size:10px; color:var(--muted);
+    font-family:'JetBrains Mono',monospace;
+    white-space:nowrap;
+    bottom:-14px; left:50%; transform:translateX(-50%);
+  }
+
+  /* flag 색상 */
+  .f-syn { background:rgba(34,211,238,.15); border:1px solid var(--c3); color:var(--c3); }
+  .f-ack { background:rgba(163,230,53,.12); border:1px solid var(--ack); color:var(--ack); }
+  .f-fin { background:rgba(251,113,133,.15); border:1px solid var(--c4); color:var(--c4); }
+  .f-synack {
+    background:linear-gradient(90deg,rgba(34,211,238,.12),rgba(163,230,53,.1));
+    border:1px solid var(--ack); color:#7dd3fc;
+  }
+
+  /* line 색상 */
+  .l-syn  { background:var(--c3); }
+  .l-ack  { background:var(--ack); }
+  .l-fin  { background:var(--c4); }
+  .l-synack { background:linear-gradient(90deg, var(--c3), var(--ack)); }
+
+  /* ── 버튼 ── */
+  .btn-row { display:flex; gap:10px; justify-content:center; margin-top:22px; flex-wrap:wrap; }
+  .btn {
+    padding:8px 22px; border-radius:8px;
+    border:1px solid; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+    transition:background .2s, color .2s;
+  }
+  .btn3 { border-color:var(--c3); color:var(--c3); background:transparent; }
+  .btn3:hover { background:var(--c3d); }
+  .btn4 { border-color:var(--c4); color:var(--c4); background:transparent; }
+  .btn4:hover { background:var(--c4d); }
+  .btn-reset { border-color:var(--muted); color:var(--muted); background:transparent; }
+  .btn-reset:hover { background:rgba(255,255,255,.04); }
+
+  /* ── 상태 표시 ── */
+  .status-bar {
+    margin-top:18px;
+    padding:12px 18px;
+    border-radius:10px;
+    background:rgba(255,255,255,.03);
+    border:1px solid var(--border);
+    font-size:13px; font-family:'JetBrains Mono',monospace;
+    color:var(--muted); min-height:46px;
+    transition:all .3s;
+  }
+
+  /* ── 시퀀스 번호 설명 ── */
+  .seq-box {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:24px;
+  }
+  .seq-visual {
+    display:flex; flex-direction:column; gap:10px;
+    margin:16px 0;
+  }
+  .seq-row {
+    display:flex; align-items:center; gap:12px;
+    font-size:13px; padding:10px 14px;
+    background:rgba(255,255,255,.02); border-radius:8px;
+  }
+  .seq-arrow { font-size:18px; flex-shrink:0; }
+  .seq-code {
+    font-family:'JetBrains Mono',monospace; font-size:12px;
+    display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+  }
+  .seq-tag {
+    padding:2px 8px; border-radius:5px;
+    font-size:11px; font-weight:700;
+  }
+  .seq-note { font-size:12px; color:var(--muted); line-height:1.7; margin-top:14px; }
+
+  .why-card {
+    margin-top:16px;
+    background:rgba(245,158,11,.06);
+    border:1px solid rgba(245,158,11,.25);
+    border-left:3px solid var(--wait);
+    border-radius:10px;
+    padding:16px 18px;
+    font-size:13px; color:#94a3b8; line-height:1.8;
+  }
+  .why-card strong { color:var(--wait); }
+
+  /* ── TIME_WAIT ── */
+  .timewait-box {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:24px;
+  }
+  .tw-visual {
+    display:flex; flex-direction:column; gap:10px; margin:16px 0;
+  }
+  .tw-row {
+    display:flex; align-items:flex-start; gap:12px;
+    font-size:13px; line-height:1.7; color:#94a3b8;
+  }
+  .tw-num {
+    flex-shrink:0; width:24px; height:24px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; font-family:'JetBrains Mono',monospace;
+    background:rgba(245,158,11,.15); border:1px solid var(--wait); color:var(--wait);
+  }
+  .tw-highlight {
+    margin-top:16px;
+    background:rgba(251,113,133,.06);
+    border:1px solid rgba(251,113,133,.2);
+    border-radius:8px;
+    padding:14px 16px;
+    font-size:13px; color:#94a3b8; line-height:1.8;
+  }
+
+  /* ── 전체 상태 흐름 ── */
+  .state-flow {
+    display:flex; gap:0; overflow-x:auto;
+    padding:8px 0; flex-wrap:nowrap;
+  }
+  .sf-item {
+    flex-shrink:0; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .sf-state {
+    padding:8px 14px; border-radius:8px;
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    border:1px solid;
+    transition:all .3s;
+  }
+  .sf-arrow { color:var(--muted); font-size:20px; display:flex; align-items:center; padding:0 4px; margin-top:12px; }
+  .sf-label { font-size:10px; color:var(--muted); max-width:80px; }
+
+  /* ── 요약 테이블 ── */
+  .cmp-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .cmp-table th {
+    padding:12px 16px; text-align:left;
+    font-size:11px; letter-spacing:1px; text-transform:uppercase;
+    color:var(--muted); font-family:'JetBrains Mono',monospace;
+    border-bottom:1px solid var(--border);
+  }
+  .cmp-table td { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.04); }
+  .cmp-table tr:hover td { background:rgba(255,255,255,.02); }
+  .cmp-table .rl { color:var(--muted); font-weight:600; }
+  .cmp-table .c3c { color:#7dd3fc; }
+  .cmp-table .c4c { color:#fda4af; }
+
+  @keyframes up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  @media(max-width:600px){
+    .peers, .timeline { grid-template-columns: 80px 1fr 80px; }
+    .peer-icon { width:44px; height:44px; font-size:20px; }
+    .peer-name { font-size:10px; }
+    .peer-state { font-size:9px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <p class="hero-tag">TCP Connection · OSI L4 · 면접 필수</p>
+    <h1><span class="t3">3-Way</span> & <span class="t4">4-Way</span> Handshake</h1>
+    <p>TCP 가상 회선의 수립과 해제 — SYN/ACK/FIN 패킷 교환부터 TIME_WAIT까지</p>
+  </div>
+
+  <!-- ══════════════ 3-WAY ══════════════ -->
+  <div class="section s1">
+    <div class="sec-title">
+      <div class="bar"></div>
+      TCP 3-Way Handshake — 연결 수립
+      <span class="badge b3">Connection Establishment</span>
+    </div>
+    <div class="diagram-box three">
+
+      <!-- 피어 헤더 -->
+      <div class="peers">
+        <div class="peer">
+          <div class="peer-icon" style="background:rgba(34,211,238,.1);border:2px solid var(--c3)">🖥️</div>
+          <div class="peer-name" style="color:var(--c3)">CLIENT</div>
+          <div class="peer-state" id="c3-state" style="background:rgba(75,96,128,.15);border:1px solid var(--muted);color:var(--muted)">CLOSED</div>
+        </div>
+        <div></div>
+        <div class="peer">
+          <div class="peer-icon" style="background:rgba(34,211,238,.1);border:2px solid var(--c3)">🖧</div>
+          <div class="peer-name" style="color:var(--c3)">SERVER</div>
+          <div class="peer-state" id="s3-state" style="background:rgba(75,96,128,.15);border:1px solid var(--muted);color:var(--muted)">LISTEN</div>
+        </div>
+      </div>
+
+      <!-- 타임라인 -->
+      <div class="timeline">
+        <div class="tl-side"></div>
+        <div class="tl-center" id="tl3">
+
+          <div class="arrow-row right" id="a3-1">
+            <span class="ar-flag f-syn">SYN (n)</span>
+            <div class="ar-line l-syn" style="position:relative">
+              <span class="ar-desc">연결 요청 · ISN = n (임의 난수)</span>
+            </div>
+            <span class="ar-tip" style="color:var(--c3)">→</span>
+          </div>
+
+          <div class="arrow-row left" id="a3-2">
+            <span class="ar-flag f-synack">SYN (m) + ACK (n+1)</span>
+            <div class="ar-line l-synack" style="position:relative">
+              <span class="ar-desc">수락 · 서버 ISN = m · n+1 확인</span>
+            </div>
+            <span class="ar-tip" style="color:var(--ack)">←</span>
+          </div>
+
+          <div class="arrow-row right" id="a3-3">
+            <span class="ar-flag f-ack">ACK (m+1)</span>
+            <div class="ar-line l-ack" style="position:relative">
+              <span class="ar-desc">연결 확립 · m+1 확인</span>
+            </div>
+            <span class="ar-tip" style="color:var(--ack)">→</span>
+          </div>
+
+        </div>
+        <div class="tl-side"></div>
+      </div>
+
+      <div class="status-bar" id="sb3">재생 버튼을 누르면 단계별로 확인할 수 있습니다.</div>
+
+      <div class="btn-row">
+        <button class="btn btn3" onclick="play3()">▶ 재생</button>
+        <button class="btn btn-reset" onclick="reset3()">↺ 초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 시퀀스 번호 상세 -->
+  <div class="section s2">
+    <div class="sec-title"><div class="bar"></div>SYN에 임의 난수(ISN)를 쓰는 이유</div>
+    <div class="seq-box">
+      <div class="seq-visual">
+        <div class="seq-row">
+          <span class="seq-arrow">①</span>
+          <div>
+            <div class="seq-code">
+              <span class="seq-tag f-syn">SYN</span>
+              <span style="color:#94a3b8">seq =</span>
+              <span style="color:var(--c3);font-family:'JetBrains Mono',monospace;font-weight:700">n</span>
+              <span style="color:var(--muted);font-size:11px">(랜덤 초기 시퀀스 번호 ISN)</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">클라이언트 → 서버 · 연결 요청</div>
+          </div>
+        </div>
+        <div class="seq-row">
+          <span class="seq-arrow">②</span>
+          <div>
+            <div class="seq-code">
+              <span class="seq-tag f-synack">SYN+ACK</span>
+              <span style="color:#94a3b8">seq =</span>
+              <span style="color:var(--c3);font-family:'JetBrains Mono',monospace;font-weight:700">m</span>
+              <span style="color:#94a3b8">, ack =</span>
+              <span style="color:var(--ack);font-family:'JetBrains Mono',monospace;font-weight:700">n+1</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">서버 → 클라이언트 · 자신의 ISN(m) 전송 + n 받았음을 n+1로 확인</div>
+          </div>
+        </div>
+        <div class="seq-row">
+          <span class="seq-arrow">③</span>
+          <div>
+            <div class="seq-code">
+              <span class="seq-tag f-ack">ACK</span>
+              <span style="color:#94a3b8">ack =</span>
+              <span style="color:var(--ack);font-family:'JetBrains Mono',monospace;font-weight:700">m+1</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">클라이언트 → 서버 · m 받았음을 m+1로 확인 → 연결 수립!</div>
+          </div>
+        </div>
+      </div>
+      <div class="why-card">
+        <strong>❓ 왜 임의의 난수(ISN, Initial Sequence Number)를 쓸까?</strong><br>
+        단순히 0부터 시작하면 이전 연결의 패킷이 뒤늦게 도달했을 때 현재 연결의 데이터로 잘못 인식될 수 있습니다. 이를 <strong>지연 패킷 충돌</strong>이라 합니다.<br>
+        ISN을 랜덤으로 지정하면 이전 연결과 현재 연결의 시퀀스 공간이 겹칠 가능성이 극히 낮아지므로, <strong>서로 다른 연결의 패킷을 안전하게 구분</strong>할 수 있습니다.<br>
+        부가적으로 예측 가능한 시퀀스 번호는 <strong>TCP 시퀀스 번호 예측 공격</strong>의 표적이 되기 때문에 보안 측면에서도 랜덤 ISN이 필요합니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 4-WAY ══════════════ -->
+  <div class="section s3">
+    <div class="sec-title">
+      <div class="bar"></div>
+      TCP 4-Way Handshake — 연결 해제
+      <span class="badge b4">Connection Termination</span>
+    </div>
+    <div class="diagram-box four">
+
+      <div class="peers">
+        <div class="peer">
+          <div class="peer-icon" style="background:rgba(251,113,133,.1);border:2px solid var(--c4)">🖥️</div>
+          <div class="peer-name" style="color:var(--c4)">CLIENT</div>
+          <div class="peer-state" id="c4-state" style="background:rgba(34,211,238,.1);border:1px solid var(--c3);color:var(--c3)">ESTABLISHED</div>
+        </div>
+        <div></div>
+        <div class="peer">
+          <div class="peer-icon" style="background:rgba(251,113,133,.1);border:2px solid var(--c4)">🖧</div>
+          <div class="peer-name" style="color:var(--c4)">SERVER</div>
+          <div class="peer-state" id="s4-state" style="background:rgba(34,211,238,.1);border:1px solid var(--c3);color:var(--c3)">ESTABLISHED</div>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="tl-side"></div>
+        <div class="tl-center" id="tl4">
+
+          <div class="arrow-row right" id="a4-1">
+            <span class="ar-flag f-fin">FIN</span>
+            <div class="ar-line l-fin" style="position:relative">
+              <span class="ar-desc">연결 종료 요청 (Active Close)</span>
+            </div>
+            <span class="ar-tip" style="color:var(--c4)">→</span>
+          </div>
+
+          <div class="arrow-row left" id="a4-2">
+            <span class="ar-flag f-ack">ACK</span>
+            <div class="ar-line l-ack" style="position:relative">
+              <span class="ar-desc">FIN 수신 확인 · 아직 데이터 남을 수 있음</span>
+            </div>
+            <span class="ar-tip" style="color:var(--ack)">←</span>
+          </div>
+
+          <div class="arrow-row left" id="a4-3">
+            <span class="ar-flag f-fin">FIN</span>
+            <div class="ar-line l-fin" style="position:relative">
+              <span class="ar-desc">서버 측 종료 준비 완료</span>
+            </div>
+            <span class="ar-tip" style="color:var(--c4)">←</span>
+          </div>
+
+          <div class="arrow-row right" id="a4-4">
+            <span class="ar-flag f-ack">ACK</span>
+            <div class="ar-line l-ack" style="position:relative">
+              <span class="ar-desc">최종 확인 · 클라이언트 TIME_WAIT 진입</span>
+            </div>
+            <span class="ar-tip" style="color:var(--ack)">→</span>
+          </div>
+
+        </div>
+        <div class="tl-side"></div>
+      </div>
+
+      <div class="status-bar" id="sb4">재생 버튼을 누르면 단계별로 확인할 수 있습니다.</div>
+
+      <div class="btn-row">
+        <button class="btn btn4" onclick="play4()">▶ 재생</button>
+        <button class="btn btn-reset" onclick="reset4()">↺ 초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIME_WAIT 상세 -->
+  <div class="section s4">
+    <div class="sec-title"><div class="bar"></div>TIME_WAIT — 왜 바로 닫지 않을까?</div>
+    <div class="timewait-box">
+      <div class="tw-visual">
+        <div class="tw-row">
+          <div class="tw-num">1</div>
+          <div><strong style="color:#fda4af">지연 패킷 대비</strong> — 네트워크상에 아직 떠돌고 있는 패킷이 뒤늦게 도착할 수 있습니다. TIME_WAIT 없이 바로 새 연결을 맺으면 해당 패킷이 <em>새 연결의 데이터</em>로 오인될 수 있습니다.</div>
+        </div>
+        <div class="tw-row">
+          <div class="tw-num">2</div>
+          <div><strong style="color:#fda4af">마지막 ACK 유실 대비</strong> — 클라이언트가 보낸 마지막 ACK이 유실되면 서버는 FIN을 재전송합니다. 클라이언트가 이미 CLOSED 상태라면 이 FIN을 처리할 수 없습니다. TIME_WAIT 동안 재전송 FIN을 수신하면 다시 ACK을 보낼 수 있습니다.</div>
+        </div>
+        <div class="tw-row">
+          <div class="tw-num">3</div>
+          <div><strong style="color:#fda4af">대기 시간</strong> — 일반적으로 <strong style="font-family:'JetBrains Mono',monospace">2 × MSL(Maximum Segment Lifetime)</strong> 동안 대기합니다. MSL은 보통 60초이므로 TIME_WAIT는 최대 2분 정도입니다.</div>
+        </div>
+      </div>
+      <div class="tw-highlight">
+        💡 <strong style="color:var(--c4)">반절 닫힘 (Half-Close)</strong> — 4-way에서 서버가 ACK을 먼저 보내고 나중에 FIN을 보내는 이유는, ACK과 FIN 사이에 <strong>서버가 아직 전송할 데이터가 남아있을 수 있기 때문</strong>입니다. 서버는 ACK으로 FIN을 받았음을 알리고, 남은 데이터를 모두 보낸 뒤에야 FIN을 전송합니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- TCP 상태 흐름 -->
+  <div class="section s4">
+    <div class="sec-title"><div class="bar"></div>TCP 연결 상태 흐름</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;overflow-x:auto;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;font-family:'JetBrains Mono',monospace;">CLIENT 관점</div>
+      <div class="state-flow">
+        <div class="sf-item">
+          <div class="sf-state" style="background:rgba(75,96,128,.15);border-color:var(--muted);color:var(--muted)">CLOSED</div>
+          <div class="sf-label">초기 상태</div>
+        </div>
+        <div class="sf-arrow">→</div>
+        <div class="sf-item">
+          <div class="sf-state" style="background:var(--c3d);border-color:var(--c3);color:var(--c3)">SYN_SENT</div>
+          <div class="sf-label">SYN 전송</div>
+        </div>
+        <div class="sf-arrow">→</div>
+        <div class="sf-item">
+          <div class="sf-state" style="background:rgba(34,197,94,.1);border-color:var(--green);color:var(--green)">ESTABLISHED</div>
+          <div class="sf-label">연결 수립</div>
+        </div>
+        <div class="sf-arrow">→</div>
+        <div class="sf-item">
+          <div class="sf-state" style="background:var(--c4d);border-color:var(--c4);color:var(--c4)">FIN_WAIT_1</div>
+          <div class="sf-label">FIN 전송</div>
+        </div>
+        <div class="sf-arrow">→</div>
+        <div class="sf-item">
+          <div class="sf-state" style="background:var(--c4d);border-color:var(--c4);color:var(--c4)">FIN_WAIT_2</div>
+          <div class="sf-label">ACK 수신</div>
+        </div>
+        <div class="sf-arrow">→</div>
+        <div class="sf-item">
+          <div class="sf-state" style="background:rgba(245,158,11,.12);border-color:var(--wait);color:var(--wait)">TIME_WAIT</div>
+          <div class="sf-label">ACK 전송 후 대기</div>
+        </div>
+        <div class="sf-arrow">→</div>
+        <div class="sf-item">
+          <div class="sf-state" style="background:rgba(75,96,128,.15);border-color:var(--muted);color:var(--muted)">CLOSED</div>
+          <div class="sf-label">연결 해제</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 요약 비교 -->
+  <div class="section s5">
+    <div class="sec-title"><div class="bar"></div>3-Way vs 4-Way — 한눈에 비교</div>
+    <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--border);">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th style="color:var(--c3)">3-Way Handshake</th>
+            <th style="color:var(--c4)">4-Way Handshake</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="rl">목적</td><td class="c3c">연결 수립 (가상 회선 생성)</td><td class="c4c">연결 해제 (가상 회선 제거)</td></tr>
+          <tr><td class="rl">패킷 수</td><td class="c3c">3개 (SYN → SYN+ACK → ACK)</td><td class="c4c">4개 (FIN → ACK → FIN → ACK)</td></tr>
+          <tr><td class="rl">왜 3단계?</td><td class="c3c">양방향 통신 가능 여부를 최소로 확인</td><td class="c4c">서버가 FIN과 ACK을 따로 보내야 하므로</td></tr>
+          <tr><td class="rl">시퀀스 번호</td><td class="c3c">임의 ISN 교환으로 연결 구분</td><td class="c4c">사용하지 않음 (FIN/ACK만 교환)</td></tr>
+          <tr><td class="rl">특이 사항</td><td class="c3c">SYN Flooding 공격의 표적</td><td class="c4c">클라이언트 TIME_WAIT 상태 발생</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ── 3-way 상태 ── */
+  const c3States = [
+    { c:'SYN_SENT', s:'LISTEN',     msg:'① Client → Server : SYN(n) 전송 — 연결 요청, ISN = n (임의 난수)', cc:'#22d3ee', sc:'#94a3b8' },
+    { c:'SYN_SENT', s:'SYN_RCVD',   msg:'② Server → Client : SYN(m) + ACK(n+1) — 요청 수락, 서버 ISN = m', cc:'#22d3ee', sc:'#22d3ee' },
+    { c:'ESTABLISHED', s:'ESTABLISHED', msg:'③ Client → Server : ACK(m+1) — 연결 수립 완료 ✅', cc:'#22c55e', sc:'#22c55e' },
+  ];
+  let p3 = false;
+  function reset3() {
+    p3 = false;
+    ['a3-1','a3-2','a3-3'].forEach(id => document.getElementById(id).classList.remove('show'));
+    setStatus('sb3','재생 버튼을 누르면 단계별로 확인할 수 있습니다.','#4b6080');
+    setPeerState('c3-state','CLOSED','#4b6080','rgba(75,96,128,.15)');
+    setPeerState('s3-state','LISTEN','#4b6080','rgba(75,96,128,.15)');
+  }
+  function play3() {
+    if(p3) return; p3 = true; reset3(); p3 = true;
+    const ids = ['a3-1','a3-2','a3-3'];
+    ids.forEach((id, i) => {
+      setTimeout(() => {
+        document.getElementById(id).classList.add('show');
+        const s = c3States[i];
+        setStatus('sb3', s.msg, '#e2e8f0');
+        setPeerState('c3-state', s.c, s.cc, `rgba(${hexToRgb(s.cc)},.12)`);
+        setPeerState('s3-state', s.s, s.sc, `rgba(${hexToRgb(s.sc)},.12)`);
+      }, 600 + i * 900);
+    });
+    setTimeout(() => { p3 = false; }, 600 + 2 * 900 + 100);
+  }
+
+  /* ── 4-way 상태 ── */
+  const c4States = [
+    { c:'FIN_WAIT_1', s:'CLOSE_WAIT',  msg:'① Client → Server : FIN — 연결 종료 요청 (Active Close)', cc:'#fb7185', sc:'#fb7185' },
+    { c:'FIN_WAIT_2', s:'CLOSE_WAIT',  msg:'② Server → Client : ACK — FIN 수신 확인. 서버는 아직 데이터를 보낼 수 있음.', cc:'#fb7185', sc:'#f59e0b' },
+    { c:'FIN_WAIT_2', s:'LAST_ACK',    msg:'③ Server → Client : FIN — 서버 데이터 전송 완료. 종료 준비.', cc:'#fb7185', sc:'#fb7185' },
+    { c:'TIME_WAIT',  s:'CLOSED',      msg:'④ Client → Server : ACK — 최종 확인. 클라이언트 TIME_WAIT 진입 (2×MSL 대기 후 CLOSED) ✅', cc:'#f59e0b', sc:'#4b6080' },
+  ];
+  let p4 = false;
+  function reset4() {
+    p4 = false;
+    ['a4-1','a4-2','a4-3','a4-4'].forEach(id => document.getElementById(id).classList.remove('show'));
+    setStatus('sb4','재생 버튼을 누르면 단계별로 확인할 수 있습니다.','#4b6080');
+    setPeerState('c4-state','ESTABLISHED','#22d3ee','rgba(34,211,238,.1)');
+    setPeerState('s4-state','ESTABLISHED','#22d3ee','rgba(34,211,238,.1)');
+  }
+  function play4() {
+    if(p4) return; p4 = true; reset4(); p4 = true;
+    const ids = ['a4-1','a4-2','a4-3','a4-4'];
+    ids.forEach((id, i) => {
+      setTimeout(() => {
+        document.getElementById(id).classList.add('show');
+        const s = c4States[i];
+        setStatus('sb4', s.msg, '#e2e8f0');
+        setPeerState('c4-state', s.c, s.cc, `rgba(${hexToRgb(s.cc)},.12)`);
+        setPeerState('s4-state', s.s, s.sc, `rgba(${hexToRgb(s.sc)},.12)`);
+      }, 600 + i * 900);
+    });
+    setTimeout(() => { p4 = false; }, 600 + 3 * 900 + 100);
+  }
+
+  /* helpers */
+  function setStatus(id, msg, color) {
+    const el = document.getElementById(id);
+    el.textContent = msg; el.style.color = color;
+  }
+  function setPeerState(id, text, color, bg) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.style.color = color;
+    el.style.background = bg;
+    el.style.borderColor = color;
+  }
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `${r},${g},${b}`;
+  }
+</script>
+</body>
+</html>

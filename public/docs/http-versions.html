@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP 버전별 진화 — 0.9부터 3.0까지</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --bg:      #05070f;
+    --surf:    #0a0e1a;
+    --surf2:   #0f1525;
+    --border:  #1a2540;
+    --text:    #dde4f0;
+    --muted:   #3d5070;
+    --dim:     #8aa0c0;
+
+    --v09:  #64748b;
+    --v10:  #f59e0b;
+    --v11:  #f97316;
+    --v2:   #06b6d4;
+    --v3:   #a855f7;
+
+    --v09d: rgba(100,116,139,0.12);
+    --v10d: rgba(245,158,11,0.12);
+    --v11d: rgba(249,115,22,0.12);
+    --v2d:  rgba(6,182,212,0.12);
+    --v3d:  rgba(168,85,247,0.12);
+
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Sora', sans-serif;
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(6,182,212,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(6,182,212,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none; z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 20%, rgba(168,85,247,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 10% 80%, rgba(6,182,212,0.05) 0%, transparent 55%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 60px 20px 100px; position: relative; z-index: 1; }
+
+  .hero { text-align: center; margin-bottom: 64px; }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px; letter-spacing: 5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px;
+    opacity: 0; animation: fadeUp .6s ease forwards .1s;
+  }
+  .hero h1 {
+    font-size: clamp(30px, 6vw, 56px);
+    font-weight: 800; line-height: 1.1; margin-bottom: 16px;
+    opacity: 0; animation: fadeUp .6s ease forwards .3s;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(120deg, var(--v2), var(--v3));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 15px; color: var(--dim); line-height: 1.8; max-width: 560px; margin: 0 auto;
+    opacity: 0; animation: fadeUp .6s ease forwards .5s;
+  }
+
+  .ver-nav {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 56px;
+    opacity: 0; animation: fadeUp .6s ease forwards .7s;
+  }
+  .ver-pill {
+    padding: 7px 18px; border-radius: 30px; border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all .25s; background: transparent; color: var(--dim);
+  }
+  .ver-pill:hover { transform: translateY(-2px); }
+  .ver-pill.active-09  { background: var(--v09d); border-color: var(--v09); color: var(--v09); }
+  .ver-pill.active-10  { background: var(--v10d); border-color: var(--v10); color: var(--v10); }
+  .ver-pill.active-11  { background: var(--v11d); border-color: var(--v11); color: var(--v11); }
+  .ver-pill.active-2   { background: var(--v2d);  border-color: var(--v2);  color: var(--v2); }
+  .ver-pill.active-3   { background: var(--v3d);  border-color: var(--v3);  color: var(--v3); }
+
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+    background: linear-gradient(to bottom,
+      var(--v09) 0%, var(--v10) 20%, var(--v11) 40%, var(--v2) 70%, var(--v3) 100%);
+    opacity: 0.4;
+    border-radius: 2px;
+  }
+
+  .ver-block {
+    position: relative;
+    margin-bottom: 8px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--surf);
+    overflow: hidden;
+    opacity: 0; transform: translateX(-16px);
+    transition: opacity .5s ease, transform .5s ease, box-shadow .3s;
+  }
+  .ver-block.visible { opacity: 1; transform: translateX(0); }
+
+  .ver-block::before {
+    content: '';
+    position: absolute; left: -38px; top: 36px;
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid; background: var(--bg);
+    z-index: 2;
+  }
+  .vb-09::before { border-color: var(--v09); box-shadow: 0 0 8px var(--v09); }
+  .vb-10::before { border-color: var(--v10); box-shadow: 0 0 8px var(--v10); }
+  .vb-11::before { border-color: var(--v11); box-shadow: 0 0 8px var(--v11); }
+  .vb-2::before  { border-color: var(--v2);  box-shadow: 0 0 8px var(--v2); }
+  .vb-3::before  { border-color: var(--v3);  box-shadow: 0 0 8px var(--v3); }
+
+  .vb-09 { border-top: 2px solid var(--v09); }
+  .vb-10 { border-top: 2px solid var(--v10); }
+  .vb-11 { border-top: 2px solid var(--v11); }
+  .vb-2  { border-top: 2px solid var(--v2); box-shadow: 0 0 40px rgba(6,182,212,0.06); }
+  .vb-3  { border-top: 2px solid var(--v3); box-shadow: 0 0 40px rgba(168,85,247,0.06); }
+
+  .vb-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 22px 26px 20px;
+    cursor: pointer; user-select: none;
+  }
+
+  .vb-num {
+    font-family: var(--mono); font-size: 22px; font-weight: 700;
+    min-width: 96px; line-height: 1;
+  }
+  .vb-09 .vb-num { color: var(--v09); }
+  .vb-10 .vb-num { color: var(--v10); }
+  .vb-11 .vb-num { color: var(--v11); }
+  .vb-2  .vb-num { color: var(--v2); }
+  .vb-3  .vb-num { color: var(--v3); }
+
+  .vb-meta { flex: 1; }
+  .vb-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .vb-year  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .vb-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 700; font-family: var(--mono);
+    border: 1px solid; white-space: nowrap;
+  }
+
+  .vb-toggle {
+    font-size: 18px; color: var(--muted);
+    transition: transform .3s; flex-shrink: 0;
+  }
+  .vb-toggle.open { transform: rotate(180deg); }
+
+  .vb-body {
+    display: none;
+    padding: 0 26px 26px;
+    border-top: 1px solid var(--border);
+  }
+  .vb-body.open { display: block; }
+
+  .vb-summary {
+    font-size: 14px; color: var(--dim); line-height: 1.85;
+    padding: 18px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .feat-card {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px;
+    transition: transform .2s;
+  }
+  .feat-card:hover { transform: translateY(-2px); }
+  .feat-card .fc-icon { font-size: 22px; margin-bottom: 8px; }
+  .feat-card .fc-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .feat-card .fc-desc { font-size: 12px; color: var(--dim); line-height: 1.7; }
+
+  .conn-diagram {
+    border-radius: 12px; padding: 20px;
+    font-family: var(--mono); font-size: 12px;
+    margin-bottom: 16px;
+  }
+  .conn-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .conn-row {
+    display: flex; gap: 0; align-items: center; margin-bottom: 10px;
+  }
+  .conn-label {
+    font-size: 11px; color: var(--muted); min-width: 70px; flex-shrink: 0;
+  }
+  .conn-bars { display: flex; gap: 4px; align-items: center; flex: 1; }
+  .conn-bar {
+    height: 22px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.7);
+    white-space: nowrap; padding: 0 8px; min-width: 44px;
+    transition: transform .15s; cursor: default;
+  }
+  .conn-bar:hover { transform: scaleY(1.15); }
+  .conn-gap { flex-shrink: 0; }
+  .conn-wait { background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,255,255,0.1); color: var(--muted); }
+  .conn-tcp  { background: rgba(99,102,241,0.3); border: 1px solid rgba(99,102,241,0.5); }
+
+  .code-box {
+    background: #060a14;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-family: var(--mono); font-size: 12px;
+    line-height: 1.85; overflow-x: auto; margin-bottom: 16px;
+  }
+  .c-cmt { color: #3d5070; }
+  .c-key { color: var(--v2); }
+  .c-val { color: #f59e0b; }
+  .c-str { color: #86efac; }
+  .c-hdr { color: #c084fc; }
+  .c-ok  { color: #4ade80; }
+
+  .perf-compare { margin-bottom: 16px; }
+  .pc-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .pc-label { font-size: 12px; color: var(--dim); min-width: 160px; flex-shrink: 0; }
+  .pc-bar-wrap { flex: 1; height: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; }
+  .pc-bar { height: 100%; border-radius: 10px; }
+  .pc-val { font-family: var(--mono); font-size: 11px; color: var(--dim); min-width: 40px; text-align: right; }
+
+  .proto-stack { display: flex; flex-direction: column; gap: 4px; max-width: 440px; margin-bottom: 16px; }
+  .ps-layer {
+    padding: 10px 16px; border-radius: 8px;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: transform .2s; cursor: default;
+  }
+  .ps-layer:hover { transform: scaleX(1.02); }
+  .ps-note { font-size: 10px; font-weight: 400; opacity: .7; }
+
+  .big-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .big-table th {
+    padding: 12px 14px; text-align: left; font-size: 11px;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+    font-family: var(--mono); border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .big-table td { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
+  .big-table tr:hover td { background: rgba(255,255,255,.02); }
+  .bt-label { color: var(--dim); font-weight: 600; }
+  .good { color: #4ade80; }
+  .warn { color: #fbbf24; }
+  .bad  { color: #f87171; }
+
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  .tip-card {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; transition: transform .2s, box-shadow .2s;
+  }
+  .tip-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.4); }
+  .tip-card .ti { font-size: 22px; margin-bottom: 10px; }
+  .tip-card .tt { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .tip-card .td { font-size: 12px; color: var(--dim); line-height: 1.75; }
+
+  .section-title {
+    font-size: 18px; font-weight: 700; margin-bottom: 22px;
+    display: flex; align-items: center; gap: 12px; color: var(--text);
+  }
+  .section-title .bar {
+    width: 4px; height: 20px; border-radius: 2px;
+    background: linear-gradient(to bottom, var(--v2), var(--v3));
+  }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(18px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  @media (max-width: 600px) {
+    .vb-header { flex-wrap: wrap; }
+    .vb-num { min-width: unset; }
+    .conn-label { min-width: 50px; }
+    .pc-label { min-width: 100px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <p class="hero-eyebrow">Application Layer Protocol · 면접 필수 · History of Web</p>
+    <h1>HTTP의 <em>진화</em></h1>
+    <p class="hero-sub">1991년 단 하나의 메서드로 시작한 HTTP가 어떻게 멀티플렉싱, QUIC까지 발전했는지 — 버전별 핵심 차이와 각 버전이 해결한 문제들</p>
+  </div>
+
+  <div class="ver-nav">
+    <button class="ver-pill" onclick="jumpTo('v09')">HTTP/0.9</button>
+    <button class="ver-pill" onclick="jumpTo('v10')">HTTP/1.0</button>
+    <button class="ver-pill" onclick="jumpTo('v11')">HTTP/1.1</button>
+    <button class="ver-pill" onclick="jumpTo('v2')">HTTP/2</button>
+    <button class="ver-pill" onclick="jumpTo('v3')">HTTP/3</button>
+  </div>
+
+  <div class="timeline">
+
+    <!-- HTTP/0.9 -->
+    <div class="ver-block vb-09" id="v09">
+      <div class="vb-header" onclick="toggle('body09', this)">
+        <div class="vb-num">HTTP/0.9</div>
+        <div class="vb-meta">
+          <div class="vb-title">The One-Line Protocol</div>
+          <div class="vb-year">1991 · Tim Berners-Lee</div>
+        </div>
+        <div class="vb-tags">
+          <span class="tag" style="border-color:var(--v09);color:var(--v09)">GET Only</span>
+          <span class="tag" style="border-color:var(--v09);color:var(--v09)">HTML Only</span>
+          <span class="tag" style="border-color:var(--v09);color:var(--v09)">헤더 없음</span>
+        </div>
+        <div class="vb-toggle" id="toggle-body09">▼</div>
+      </div>
+      <div class="vb-body" id="body09">
+        <p class="vb-summary">
+          HTTP의 원형. <strong style="color:var(--text)">GET 메서드 하나</strong>와 요청 경로만 존재했습니다. 헤더도, 상태 코드도, 버전 표기도 없었습니다. 응답은 HTML 본문 그대로였고, 전송이 끝나면 TCP 연결이 즉시 닫혔습니다. 웹의 씨앗이라 할 수 있는 가장 단순한 형태입니다.
+        </p>
+        <div class="feat-grid">
+          <div class="feat-card">
+            <div class="fc-icon">📄</div>
+            <div class="fc-title" style="color:var(--v09)">단일 메서드 (GET)</div>
+            <div class="fc-desc">GET만 존재. 요청 형식은 <code style="font-family:var(--mono);color:#fbbf24">GET /index.html</code> 한 줄이 전부였습니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🚫</div>
+            <div class="fc-title" style="color:var(--v09)">헤더 없음</div>
+            <div class="fc-desc">요청/응답 헤더가 없어 메타데이터 전달이 불가능했습니다. HTML 파일만 전송할 수 있었습니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🔌</div>
+            <div class="fc-title" style="color:var(--v09)">연결 즉시 종료</div>
+            <div class="fc-desc">응답 후 TCP 연결이 바로 닫힙니다. 요청마다 새 연결이 필요했습니다.</div>
+          </div>
+        </div>
+        <div class="code-box">
+<span class="c-cmt"># 요청 (전부입니다)</span>
+GET /index.html
+
+<span class="c-cmt"># 응답 (HTML 본문만, 헤더 없음)</span>
+&lt;html&gt;
+  &lt;body&gt;Hello, World!&lt;/body&gt;
+&lt;/html&gt;
+        </div>
+      </div>
+    </div>
+
+    <!-- HTTP/1.0 -->
+    <div class="ver-block vb-10" id="v10">
+      <div class="vb-header" onclick="toggle('body10', this)">
+        <div class="vb-num">HTTP/1.0</div>
+        <div class="vb-meta">
+          <div class="vb-title">헤더와 상태 코드의 등장</div>
+          <div class="vb-year">1996 · RFC 1945</div>
+        </div>
+        <div class="vb-tags">
+          <span class="tag" style="border-color:var(--v10);color:var(--v10)">Header 추가</span>
+          <span class="tag" style="border-color:var(--v10);color:var(--v10)">Status Code</span>
+          <span class="tag" style="border-color:var(--v10);color:var(--v10)">POST / HEAD</span>
+          <span class="tag" style="border-color:#f87171;color:#f87171">단발성 연결</span>
+        </div>
+        <div class="vb-toggle" id="toggle-body10">▼</div>
+      </div>
+      <div class="vb-body" id="body10">
+        <p class="vb-summary">
+          헤더(Header), 상태 코드, Content-Type이 도입되며 웹이 급속도로 발전했습니다. 하지만 치명적인 문제가 있었습니다. <strong style="color:var(--text)">요청마다 새로운 TCP 연결을 맺고 끊었기 때문에</strong>, 이미지 하나하나마다 3-way handshake가 발생해 페이지 로딩이 매우 느렸습니다.
+        </p>
+        <div class="feat-grid">
+          <div class="feat-card">
+            <div class="fc-icon">📋</div>
+            <div class="fc-title" style="color:var(--v10)">헤더 도입</div>
+            <div class="fc-desc">Content-Type, Content-Length 등 메타데이터 전달이 가능해졌습니다. HTML 외 이미지, 파일 전송도 지원됩니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🔢</div>
+            <div class="fc-title" style="color:var(--v10)">상태 코드</div>
+            <div class="fc-desc">200 OK, 404 Not Found 등 응답 상태를 숫자 코드로 표현. 에러 처리가 가능해졌습니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">📮</div>
+            <div class="fc-title" style="color:var(--v10)">POST, HEAD 추가</div>
+            <div class="fc-desc">데이터 전송(POST)과 헤더만 요청(HEAD)이 가능해지며 더 다양한 웹 애플리케이션 개발이 가능해졌습니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🔴</div>
+            <div class="fc-title" style="color:#f87171">문제: 단발성 연결</div>
+            <div class="fc-desc">요청마다 TCP 연결을 새로 수립합니다. 리소스 10개 로딩 시 TCP handshake가 10번 발생합니다.</div>
+          </div>
+        </div>
+        <div class="conn-diagram" style="background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.15)">
+          <div class="conn-title">HTTP/1.0 — 요청마다 새 TCP 연결</div>
+          <div class="conn-row">
+            <div class="conn-label">요청 #1</div>
+            <div class="conn-bars">
+              <div class="conn-bar conn-tcp" style="width:64px">TCP🤝</div>
+              <div class="conn-bar" style="background:rgba(245,158,11,0.3);border:1px solid rgba(245,158,11,0.5);width:48px">GET</div>
+              <div class="conn-bar" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);width:48px">RES</div>
+              <div class="conn-bar conn-wait" style="width:28px">✕</div>
+            </div>
+          </div>
+          <div class="conn-row">
+            <div class="conn-label">요청 #2</div>
+            <div class="conn-bars">
+              <div class="conn-gap" style="width:148px"></div>
+              <div class="conn-bar conn-tcp" style="width:64px">TCP🤝</div>
+              <div class="conn-bar" style="background:rgba(245,158,11,0.3);border:1px solid rgba(245,158,11,0.5);width:48px">GET</div>
+              <div class="conn-bar" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);width:48px">RES</div>
+              <div class="conn-bar conn-wait" style="width:28px">✕</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">▲ 매 요청마다 TCP 3-way handshake 비용 발생 → 페이지 로딩 느림</div>
+        </div>
+        <div class="code-box">
+<span class="c-cmt"># HTTP/1.0 요청</span>
+<span class="c-key">GET</span> /index.html <span class="c-val">HTTP/1.0</span>
+<span class="c-hdr">User-Agent:</span> <span class="c-str">Mozilla/1.0</span>
+<span class="c-hdr">Accept:</span> <span class="c-str">text/html</span>
+
+<span class="c-cmt"># HTTP/1.0 응답</span>
+<span class="c-val">HTTP/1.0</span> <span class="c-ok">200</span> OK
+<span class="c-hdr">Content-Type:</span> <span class="c-str">text/html</span>
+<span class="c-hdr">Content-Length:</span> <span class="c-str">1234</span>
+
+<span class="c-cmt"># 응답 후 TCP 연결 즉시 종료</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HTTP/1.1 -->
+    <div class="ver-block vb-11" id="v11">
+      <div class="vb-header" onclick="toggle('body11', this)">
+        <div class="vb-num">HTTP/1.1</div>
+        <div class="vb-meta">
+          <div class="vb-title">지속 연결과 파이프라이닝</div>
+          <div class="vb-year">1997 · RFC 2068 / 2616 · 현재 가장 많이 사용</div>
+        </div>
+        <div class="vb-tags">
+          <span class="tag" style="border-color:var(--v11);color:var(--v11)">Keep-Alive</span>
+          <span class="tag" style="border-color:var(--v11);color:var(--v11)">Pipelining</span>
+          <span class="tag" style="border-color:var(--v11);color:var(--v11)">Host 헤더 필수</span>
+          <span class="tag" style="border-color:var(--v11);color:var(--v11)">캐시 제어</span>
+          <span class="tag" style="border-color:#f87171;color:#f87171">HOL Blocking</span>
+        </div>
+        <div class="vb-toggle" id="toggle-body11">▼</div>
+      </div>
+      <div class="vb-body" id="body11">
+        <p class="vb-summary">
+          현재도 가장 널리 사용되는 버전. <strong style="color:var(--text)">Keep-Alive(지속 연결)</strong>로 TCP 연결을 재사용하고, <strong style="color:var(--text)">Host 헤더</strong>를 통해 하나의 IP로 여러 도메인을 서비스(가상 호스팅)할 수 있게 됩니다. 파이프라이닝으로 응답을 기다리지 않고 요청을 연속 전송할 수 있게 됐지만, <strong style="color:#f87171">HOL Blocking(Head-of-Line Blocking)</strong> 문제가 발목을 잡습니다.
+        </p>
+        <div class="feat-grid">
+          <div class="feat-card">
+            <div class="fc-icon">🔗</div>
+            <div class="fc-title" style="color:var(--v11)">Keep-Alive (지속 연결)</div>
+            <div class="fc-desc">TCP 연결을 유지하여 여러 요청에 재사용합니다. <code style="font-family:var(--mono)">Connection: keep-alive</code> 헤더로 제어합니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🏠</div>
+            <div class="fc-title" style="color:var(--v11)">Host 헤더 필수화</div>
+            <div class="fc-desc">하나의 IP에서 여러 도메인 서비스가 가능해졌습니다. 가상 호스팅(Virtual Hosting)의 기반입니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">💾</div>
+            <div class="fc-title" style="color:var(--v11)">향상된 캐시 제어</div>
+            <div class="fc-desc">ETag, Cache-Control, If-None-Match 등 세밀한 캐시 정책이 가능해졌습니다. 304 Not Modified로 대역폭을 절약합니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🚧</div>
+            <div class="fc-title" style="color:#f87171">HOL Blocking</div>
+            <div class="fc-desc">앞선 요청이 지연되면 뒤의 모든 요청도 대기합니다. 파이프라이닝이 실질적으로 무력화되는 주요 원인입니다.</div>
+          </div>
+        </div>
+        <div class="conn-diagram" style="background:rgba(249,115,22,0.05);border:1px solid rgba(249,115,22,0.15)">
+          <div class="conn-title">HTTP/1.1 — Keep-Alive와 HOL Blocking</div>
+          <div class="conn-row">
+            <div class="conn-label" style="color:var(--v11)">Keep-Alive</div>
+            <div class="conn-bars">
+              <div class="conn-bar conn-tcp" style="width:56px">TCP🤝</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.3);border:1px solid rgba(249,115,22,0.5);width:40px">REQ1</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.2);border:1px solid rgba(249,115,22,0.4);width:40px">RES1</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.3);border:1px solid rgba(249,115,22,0.5);width:40px">REQ2</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.2);border:1px solid rgba(249,115,22,0.4);width:40px">RES2</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.3);border:1px solid rgba(249,115,22,0.5);width:40px">REQ3</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.2);border:1px solid rgba(249,115,22,0.4);width:40px">RES3</div>
+            </div>
+          </div>
+          <div class="conn-row" style="margin-top:12px">
+            <div class="conn-label" style="color:#f87171">HOL Block</div>
+            <div class="conn-bars">
+              <div class="conn-bar conn-tcp" style="width:56px">TCP🤝</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.3);border:1px solid rgba(249,115,22,0.5);width:40px">REQ1</div>
+              <div class="conn-bar" style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);width:110px;color:#f87171;font-size:9px">😴 RES1 대기중...</div>
+              <div class="conn-bar conn-wait" style="width:40px;font-size:9px">REQ2⏳</div>
+              <div class="conn-bar conn-wait" style="width:40px;font-size:9px">REQ3⏳</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">▲ REQ1 응답이 느리면 REQ2·REQ3도 블로킹 → HOL Blocking</div>
+        </div>
+        <div class="code-box">
+<span class="c-cmt"># HTTP/1.1 — Host 헤더 필수, 지속 연결</span>
+<span class="c-key">GET</span> /api/user <span class="c-val">HTTP/1.1</span>
+<span class="c-hdr">Host:</span>           <span class="c-str">api.example.com</span>   <span class="c-cmt">← 필수!</span>
+<span class="c-hdr">Connection:</span>     <span class="c-str">keep-alive</span>
+<span class="c-hdr">Cache-Control:</span>  <span class="c-str">max-age=3600</span>
+<span class="c-hdr">ETag:</span>           <span class="c-str">"33a64df5"</span>
+<span class="c-hdr">If-None-Match:</span>  <span class="c-str">"33a64df5"</span>        <span class="c-cmt">← 304 Not Modified 가능</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HTTP/2 -->
+    <div class="ver-block vb-2" id="v2">
+      <div class="vb-header" onclick="toggle('body2', this)">
+        <div class="vb-num">HTTP/2</div>
+        <div class="vb-meta">
+          <div class="vb-title">멀티플렉싱과 바이너리 프레임</div>
+          <div class="vb-year">2015 · RFC 7540 · Google SPDY 기반</div>
+        </div>
+        <div class="vb-tags">
+          <span class="tag" style="border-color:var(--v2);color:var(--v2)">Multiplexing</span>
+          <span class="tag" style="border-color:var(--v2);color:var(--v2)">Binary Frame</span>
+          <span class="tag" style="border-color:var(--v2);color:var(--v2)">HPACK</span>
+          <span class="tag" style="border-color:var(--v2);color:var(--v2)">Server Push</span>
+          <span class="tag" style="border-color:#fbbf24;color:#fbbf24">TCP HOL 잔존</span>
+        </div>
+        <div class="vb-toggle" id="toggle-body2">▼</div>
+      </div>
+      <div class="vb-body" id="body2">
+        <p class="vb-summary">
+          Google의 SPDY 프로토콜을 기반으로 HTTP의 대규모 개편이 이루어졌습니다. <strong style="color:var(--text)">멀티플렉싱</strong>으로 하나의 TCP 연결에서 여러 요청을 동시에 처리하고, 텍스트 대신 <strong style="color:var(--text)">바이너리 프레임</strong>을 사용해 파싱 효율을 높였습니다. HPACK으로 헤더를 압축하고 서버 푸시도 지원합니다. 단, TCP 레벨의 HOL Blocking은 여전히 존재합니다.
+        </p>
+        <div class="feat-grid">
+          <div class="feat-card">
+            <div class="fc-icon">🔀</div>
+            <div class="fc-title" style="color:var(--v2)">멀티플렉싱 (Multiplexing)</div>
+            <div class="fc-desc">하나의 TCP 연결 위에서 여러 <strong>스트림</strong>을 동시에 처리합니다. 요청·응답이 서로를 블로킹하지 않습니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">📦</div>
+            <div class="fc-title" style="color:var(--v2)">바이너리 프레임 (Binary)</div>
+            <div class="fc-desc">텍스트 대신 이진(Binary) 형식으로 데이터를 전송합니다. 파싱이 빠르고 오류가 적습니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🗜️</div>
+            <div class="fc-title" style="color:var(--v2)">HPACK 헤더 압축</div>
+            <div class="fc-desc">중복 헤더를 압축해 전송합니다. 매번 반복 전송되던 Cookie, User-Agent 등이 대폭 줄어듭니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🚀</div>
+            <div class="fc-title" style="color:var(--v2)">서버 푸시 (Server Push)</div>
+            <div class="fc-desc">클라이언트가 요청하기 전에 서버가 필요한 리소스를 먼저 전송합니다. HTML 요청 시 CSS/JS를 미리 푸시할 수 있습니다.</div>
+          </div>
+        </div>
+
+        <div class="conn-diagram" style="background:rgba(6,182,212,0.04);border:1px solid rgba(6,182,212,0.15)">
+          <div class="conn-title">HTTP/2 — 멀티플렉싱 (단일 TCP 연결)</div>
+          <div style="display:flex;gap:4px;margin-bottom:10px;">
+            <div style="flex-shrink:0;width:70px;font-size:11px;color:var(--muted);padding-top:4px;">TCP 1개</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+              <div style="display:flex;gap:4px;align-items:center;">
+                <div class="conn-bar" style="background:rgba(6,182,212,0.25);border:1px solid rgba(6,182,212,0.5);width:50px">S1 REQ</div>
+                <div class="conn-bar" style="background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.3);width:50px">S1 RES</div>
+                <div style="font-size:10px;color:var(--muted);margin-left:4px">스트림 1</div>
+              </div>
+              <div style="display:flex;gap:4px;align-items:center;margin-left:14px;">
+                <div class="conn-bar" style="background:rgba(168,85,247,0.25);border:1px solid rgba(168,85,247,0.5);width:50px">S2 REQ</div>
+                <div class="conn-bar" style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);width:68px">S2 RES ✓</div>
+                <div style="font-size:10px;color:var(--muted);margin-left:4px">스트림 2 (먼저 완료)</div>
+              </div>
+              <div style="display:flex;gap:4px;align-items:center;margin-left:7px;">
+                <div class="conn-bar" style="background:rgba(251,146,60,0.25);border:1px solid rgba(251,146,60,0.5);width:50px">S3 REQ</div>
+                <div class="conn-bar" style="background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.3);width:50px">S3 RES</div>
+                <div style="font-size:10px;color:var(--muted);margin-left:4px">스트림 3</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted)">▲ 여러 스트림이 하나의 TCP 위에서 순서 무관하게 동시 처리됨</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">HTTP/2 프로토콜 스택</div>
+            <div class="proto-stack">
+              <div class="ps-layer" style="background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);color:var(--v2);font-size:11px">HTTP/2 <span class="ps-note">멀티플렉싱</span></div>
+              <div class="ps-layer" style="background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.25);color:#818cf8;font-size:11px">TLS 1.2+ <span class="ps-note">사실상 필수</span></div>
+              <div class="ps-layer" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);color:#6366f1;font-size:11px">TCP <span class="ps-note">패킷손실 시 HOL 잔존</span></div>
+              <div class="ps-layer" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--muted);font-size:11px">IP</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--v2);font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">HPACK 헤더 압축</div>
+            <div class="code-box" style="margin-bottom:0;font-size:11px">
+<span class="c-cmt"># 1번째 요청 (전체 전송)</span>
+<span class="c-hdr">:method:</span>    <span class="c-str">GET</span>
+<span class="c-hdr">:path:</span>      <span class="c-str">/api/user</span>
+<span class="c-hdr">:authority:</span> <span class="c-str">example.com</span>
+<span class="c-hdr">user-agent:</span> <span class="c-str">Mozilla/5.0...</span>
+
+<span class="c-cmt"># 2번째 요청 (변경분만!)</span>
+<span class="c-hdr">:path:</span>      <span class="c-str">/api/posts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HTTP/3 -->
+    <div class="ver-block vb-3" id="v3">
+      <div class="vb-header" onclick="toggle('body3', this)">
+        <div class="vb-num">HTTP/3</div>
+        <div class="vb-meta">
+          <div class="vb-title">QUIC 기반의 차세대 HTTP</div>
+          <div class="vb-year">2022 · RFC 9114 · UDP + QUIC</div>
+        </div>
+        <div class="vb-tags">
+          <span class="tag" style="border-color:var(--v3);color:var(--v3)">QUIC</span>
+          <span class="tag" style="border-color:var(--v3);color:var(--v3)">UDP 기반</span>
+          <span class="tag" style="border-color:var(--v3);color:var(--v3)">0-RTT</span>
+          <span class="tag" style="border-color:var(--v3);color:var(--v3)">HOL 완전 해결</span>
+          <span class="tag" style="border-color:var(--v3);color:var(--v3)">Connection Migration</span>
+        </div>
+        <div class="vb-toggle" id="toggle-body3">▼</div>
+      </div>
+      <div class="vb-body" id="body3">
+        <p class="vb-summary">
+          TCP를 완전히 버리고 <strong style="color:var(--text)">UDP 기반의 QUIC 프로토콜</strong> 위에서 동작합니다. HTTP/2의 TCP HOL Blocking을 근본적으로 해결하고, TLS 1.3을 내장해 연결 수립을 획기적으로 단축합니다. Wi-Fi ↔ LTE 전환 시에도 연결이 끊기지 않는 <strong style="color:var(--text)">Connection Migration</strong>까지 지원합니다.
+        </p>
+        <div class="feat-grid">
+          <div class="feat-card">
+            <div class="fc-icon">✅</div>
+            <div class="fc-title" style="color:var(--v3)">HOL Blocking 완전 해결</div>
+            <div class="fc-desc">스트림이 UDP 레벨에서 완전히 독립적입니다. 하나의 스트림 패킷 손실이 다른 스트림에 영향을 주지 않습니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">⚡</div>
+            <div class="fc-title" style="color:var(--v3)">0-RTT / 1-RTT 연결</div>
+            <div class="fc-desc">최초 연결 1 RTT, 재연결 0 RTT. TCP+TLS의 2~3 RTT 대비 획기적으로 빠릅니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">📱</div>
+            <div class="fc-title" style="color:var(--v3)">Connection Migration</div>
+            <div class="fc-desc">IP가 바뀌어도(Wi-Fi → LTE) Connection ID로 연결을 유지합니다. 모바일 환경에서 특히 유리합니다.</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🔒</div>
+            <div class="fc-title" style="color:var(--v3)">TLS 1.3 내장</div>
+            <div class="fc-desc">보안이 프로토콜에 통합되어 있어 별도 TLS Handshake 단계가 필요 없습니다. QUIC = Transport + Security.</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">HTTP/2 스택</div>
+            <div class="proto-stack">
+              <div class="ps-layer" style="background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);color:var(--v2);font-size:11px">HTTP/2</div>
+              <div class="ps-layer" style="background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.25);color:#818cf8;font-size:11px">TLS 1.2+</div>
+              <div class="ps-layer" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);color:#6366f1;font-size:11px">TCP</div>
+              <div class="ps-layer" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--muted);font-size:11px">IP</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--v3);font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">HTTP/3 스택 ✨</div>
+            <div class="proto-stack">
+              <div class="ps-layer" style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.4);color:var(--v3);font-size:11px">HTTP/3</div>
+              <div class="ps-layer" style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);color:#c084fc;font-size:11px">QUIC <span class="ps-note">TLS 1.3 내장</span></div>
+              <div class="ps-layer" style="background:rgba(249,115,22,0.12);border:1px solid rgba(249,115,22,0.3);color:#f97316;font-size:11px">UDP <span class="ps-note">← TCP 대신!</span></div>
+              <div class="ps-layer" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--muted);font-size:11px">IP</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="conn-diagram" style="background:rgba(168,85,247,0.04);border:1px solid rgba(168,85,247,0.15)">
+          <div class="conn-title">연결 수립 RTT 비교</div>
+          <div class="perf-compare">
+            <div class="pc-row">
+              <div class="pc-label">HTTP/1.1 (TCP+TLS 1.2)</div>
+              <div class="pc-bar-wrap"><div class="pc-bar" style="width:90%;background:linear-gradient(90deg,#f87171,#fca5a5)"></div></div>
+              <div class="pc-val" style="color:#f87171">3 RTT</div>
+            </div>
+            <div class="pc-row">
+              <div class="pc-label">HTTP/2 (TCP+TLS 1.3)</div>
+              <div class="pc-bar-wrap"><div class="pc-bar" style="width:60%;background:linear-gradient(90deg,var(--v2),#67e8f9)"></div></div>
+              <div class="pc-val" style="color:var(--v2)">2 RTT</div>
+            </div>
+            <div class="pc-row">
+              <div class="pc-label">HTTP/3 (QUIC 첫 연결)</div>
+              <div class="pc-bar-wrap"><div class="pc-bar" style="width:30%;background:linear-gradient(90deg,var(--v3),#d946ef)"></div></div>
+              <div class="pc-val" style="color:var(--v3)">1 RTT</div>
+            </div>
+            <div class="pc-row">
+              <div class="pc-label">HTTP/3 (QUIC 재연결)</div>
+              <div class="pc-bar-wrap"><div class="pc-bar" style="width:4%;background:linear-gradient(90deg,#4ade80,#86efac)"></div></div>
+              <div class="pc-val" style="color:#4ade80">0 RTT</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.2);border-radius:10px;padding:16px 18px;font-size:13px;color:#94a3b8;line-height:1.8;">
+          💡 <strong style="color:var(--v3)">왜 UDP?</strong> — TCP는 패킷 손실 시 재전송을 기다리는 구조가 OS 커널에 고정되어 있어 HOL Blocking을 프로토콜 레벨에서 해결할 수 없습니다. UDP는 이 제약이 없어 QUIC이 스트림별로 독립적인 재전송 로직을 애플리케이션 레이어에서 직접 구현합니다.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /timeline -->
+
+  <!-- 전체 비교 테이블 -->
+  <div style="margin-top:52px;margin-bottom:52px;opacity:0;animation:fadeUp .6s ease forwards 1.1s">
+    <div class="section-title"><div class="bar"></div>버전별 한눈에 비교</div>
+    <div style="overflow-x:auto;border-radius:16px;border:1px solid var(--border)">
+      <table class="big-table">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th style="color:var(--v09)">0.9</th>
+            <th style="color:var(--v10)">1.0</th>
+            <th style="color:var(--v11)">1.1</th>
+            <th style="color:var(--v2)">2</th>
+            <th style="color:var(--v3)">3</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="bt-label">출시 연도</td><td>1991</td><td>1996</td><td>1997</td><td>2015</td><td>2022</td></tr>
+          <tr><td class="bt-label">전송 프로토콜</td><td>TCP</td><td>TCP</td><td>TCP</td><td>TCP</td><td class="good">UDP (QUIC)</td></tr>
+          <tr><td class="bt-label">데이터 형식</td><td>Text</td><td>Text</td><td>Text</td><td class="good">Binary</td><td class="good">Binary</td></tr>
+          <tr><td class="bt-label">헤더</td><td class="bad">없음</td><td class="warn">있음</td><td class="good">강화</td><td class="good">HPACK 압축</td><td class="good">QPACK 압축</td></tr>
+          <tr><td class="bt-label">연결 방식</td><td class="bad">요청마다 새 연결</td><td class="bad">요청마다 새 연결</td><td class="warn">Keep-Alive</td><td class="good">멀티플렉싱</td><td class="good">멀티플렉싱</td></tr>
+          <tr><td class="bt-label">App HOL Blocking</td><td>—</td><td class="bad">있음</td><td class="bad">있음</td><td class="good">해결</td><td class="good">해결</td></tr>
+          <tr><td class="bt-label">TCP HOL Blocking</td><td>—</td><td class="bad">있음</td><td class="bad">있음</td><td class="warn">잔존</td><td class="good">완전 해결</td></tr>
+          <tr><td class="bt-label">TLS / 보안</td><td class="bad">✗</td><td class="warn">선택</td><td class="warn">선택</td><td class="warn">사실상 필수</td><td class="good">내장 필수</td></tr>
+          <tr><td class="bt-label">연결 수립 RTT</td><td>—</td><td class="bad">3 RTT</td><td class="bad">3 RTT</td><td class="warn">2 RTT</td><td class="good">0~1 RTT</td></tr>
+          <tr><td class="bt-label">Server Push</td><td class="bad">✗</td><td class="bad">✗</td><td class="bad">✗</td><td class="good">✓</td><td class="good">✓</td></tr>
+          <tr><td class="bt-label">Connection Migration</td><td class="bad">✗</td><td class="bad">✗</td><td class="bad">✗</td><td class="bad">✗</td><td class="good">✓ (모바일 최적)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 면접 포인트 -->
+  <div style="opacity:0;animation:fadeUp .6s ease forwards 1.2s">
+    <div class="section-title"><div class="bar"></div>🎯 면접 핵심 포인트</div>
+    <div class="tips-grid">
+      <div class="tip-card">
+        <div class="ti">🚧</div>
+        <div class="tt" style="color:var(--v11)">HOL Blocking이란?</div>
+        <div class="td">HTTP/1.1에서 앞선 요청의 응답 지연이 뒤의 모든 요청을 블로킹하는 현상. HTTP/2는 멀티플렉싱으로 Application 레벨을 해결했지만, TCP 패킷 손실 시 발생하는 TCP 레벨 HOL은 HTTP/3(QUIC)에서 완전 해결됩니다.</div>
+      </div>
+      <div class="tip-card">
+        <div class="ti">🔀</div>
+        <div class="tt" style="color:var(--v2)">멀티플렉싱이란?</div>
+        <div class="td">하나의 TCP 연결에서 여러 요청/응답을 동시에 처리하는 기법. 각 메시지를 프레임(Frame)으로 분할하고 스트림(Stream) ID를 붙여 전송한 뒤 재조립합니다. HTTP/2에서 처음 도입되었습니다.</div>
+      </div>
+      <div class="tip-card">
+        <div class="ti">⚡</div>
+        <div class="tt" style="color:var(--v3)">HTTP/3는 왜 UDP를?</div>
+        <div class="td">TCP의 HOL Blocking은 OS 커널 레벨에 고정된 구조라 해결 불가능합니다. UDP는 이 제약이 없어 QUIC이 스트림별 독립 재전송을 직접 구현할 수 있습니다. UDP 위에 신뢰성을 직접 구현한 것이 QUIC입니다.</div>
+      </div>
+      <div class="tip-card">
+        <div class="ti">🗜️</div>
+        <div class="tt" style="color:var(--v2)">HPACK vs QPACK</div>
+        <div class="td">HTTP/2의 HPACK은 동적 테이블을 공유해 헤더를 압축합니다. HTTP/3의 QPACK은 QUIC의 스트림 독립성을 고려해 테이블 동기화 방식을 개선한 버전입니다.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggle(bodyId, header) {
+    const body = document.getElementById(bodyId);
+    const toggleId = 'toggle-' + bodyId;
+    const icon = document.getElementById(toggleId);
+    body.classList.toggle('open');
+    if (icon) icon.classList.toggle('open');
+  }
+
+  function jumpTo(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const bodyId = 'body' + id.replace('v', '');
+    const body = document.getElementById(bodyId);
+    if (body && !body.classList.contains('open')) {
+      const header = el.querySelector('.vb-header');
+      toggle(bodyId, header);
+    }
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('.ver-block').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

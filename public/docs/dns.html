@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNS 동작 원리 — 도메인 이름 해석의 모든 것</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
+:root {
+  --bg:     #04060d;
+  --surf:   #080c18;
+  --surf2:  #0c1220;
+  --border: #131d35;
+  --text:   #dce8ff;
+  --dim:    #6b84b0;
+  --muted:  #2d4060;
+
+  --dns:    #3b82f6;
+  --dnsd:   rgba(59,130,246,0.12);
+  --root:   #f59e0b;
+  --rootd:  rgba(245,158,11,0.12);
+  --tld:    #10b981;
+  --tldd:   rgba(16,185,129,0.12);
+  --auth:   #a855f7;
+  --authd:  rgba(168,85,247,0.12);
+  --cache:  #06b6d4;
+  --cached: rgba(6,182,212,0.12);
+  --good:   #4ade80;
+  --warn:   #fbbf24;
+  --bad:    #f87171;
+
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans KR', sans-serif;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); overflow-x:hidden; }
+
+body::before {
+  content:''; position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 20%, rgba(59,130,246,0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 85% 80%, rgba(168,85,247,0.04) 0%, transparent 55%);
+  pointer-events:none; z-index:0;
+}
+
+.wrap { max-width:1080px; margin:0 auto; padding:60px 20px 100px; position:relative; z-index:1; }
+
+/* ── Hero ── */
+.hero { text-align:center; margin-bottom:64px; }
+.hero-eyebrow {
+  font-family:var(--mono); font-size:10px; letter-spacing:6px;
+  text-transform:uppercase; color:var(--muted); margin-bottom:16px;
+  opacity:0; animation:up .6s ease forwards .1s;
+}
+.hero h1 {
+  font-size:clamp(28px,5.5vw,52px); font-weight:700; line-height:1.15;
+  margin-bottom:14px; letter-spacing:-0.5px;
+  opacity:0; animation:up .6s ease forwards .3s;
+}
+.hero h1 span { color:var(--dns); }
+.hero-sub {
+  font-size:14px; color:var(--dim); line-height:1.85;
+  max-width:520px; margin:0 auto;
+  opacity:0; animation:up .6s ease forwards .5s;
+}
+
+/* ── 섹션 ── */
+.section { margin-bottom:60px; opacity:0; animation:up .6s ease forwards; }
+.s1{animation-delay:.6s}.s2{animation-delay:.7s}.s3{animation-delay:.75s}
+.s4{animation-delay:.8s}.s5{animation-delay:.85s}.s6{animation-delay:.9s}
+
+.sec-title {
+  font-size:17px; font-weight:700; margin-bottom:24px;
+  display:flex; align-items:center; gap:10px;
+}
+.sec-title .bar {
+  width:3px; height:20px; border-radius:2px;
+  background:linear-gradient(to bottom, var(--dns), var(--auth));
+}
+.chip {
+  font-family:var(--mono); font-size:10px; font-weight:700;
+  padding:3px 10px; border-radius:20px; border:1px solid;
+}
+
+/* ── DNS 계층 시각화 ── */
+.hierarchy {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+  margin-bottom:16px;
+}
+@media(max-width:640px){ .hierarchy{ grid-template-columns:1fr 1fr; } }
+
+.h-node {
+  border-radius:14px; padding:18px 16px; text-align:center;
+  border:1px solid var(--border); background:var(--surf);
+  transition:transform .2s, box-shadow .2s; cursor:default;
+}
+.h-node:hover { transform:translateY(-4px); }
+.h-icon { font-size:28px; margin-bottom:8px; }
+.h-name { font-size:12px; font-weight:700; margin-bottom:4px; }
+.h-desc { font-size:11px; color:var(--dim); line-height:1.6; }
+.h-example {
+  margin-top:8px; padding:5px 10px; border-radius:6px;
+  font-family:var(--mono); font-size:10px; line-height:1.5;
+}
+
+/* ── DNS 쿼리 흐름 애니메이션 ── */
+.query-sim {
+  background:var(--surf); border:1px solid var(--border);
+  border-radius:20px; overflow:hidden;
+}
+.qs-header {
+  background:var(--surf2); padding:14px 22px;
+  display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid var(--border);
+}
+.qs-dot { width:10px; height:10px; border-radius:50%; }
+.qs-title { font-family:var(--mono); font-size:12px; color:var(--dim); margin-left:8px; }
+
+.qs-body { padding:24px; }
+
+/* DNS 노드 그리드 */
+.dns-nodes {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:8px;
+  margin-bottom:24px; position:relative;
+}
+@media(max-width:600px){ .dns-nodes{ grid-template-columns:repeat(3,1fr); } }
+
+.dns-node {
+  border-radius:12px; padding:14px 10px; text-align:center;
+  border:1px solid var(--border); background:rgba(255,255,255,0.02);
+  transition:all .4s;
+  position:relative;
+}
+.dns-node.active {
+  transform:scale(1.06);
+  box-shadow:0 0 20px currentColor;
+}
+.dns-node .dn-icon { font-size:24px; margin-bottom:6px; display:block; }
+.dns-node .dn-name { font-family:var(--mono); font-size:10px; font-weight:700; }
+.dns-node .dn-sub  { font-size:9px; color:var(--muted); margin-top:2px; }
+
+.dns-node.n-client { border-color:var(--dns); }
+.dns-node.n-local  { border-color:var(--cache); }
+.dns-node.n-root   { border-color:var(--root); }
+.dns-node.n-tld    { border-color:var(--tld); }
+.dns-node.n-auth   { border-color:var(--auth); }
+
+.dns-node.n-client.active { color:var(--dns); }
+.dns-node.n-local.active  { color:var(--cache); }
+.dns-node.n-root.active   { color:var(--root); }
+.dns-node.n-tld.active    { color:var(--tld); }
+.dns-node.n-auth.active   { color:var(--auth); }
+
+/* 메시지 흐름 */
+.msg-flow {
+  height:56px; background:rgba(0,0,0,.3);
+  border-radius:10px; border:1px solid var(--border);
+  display:flex; align-items:center; padding:0 16px;
+  font-family:var(--mono); font-size:12px;
+  margin-bottom:16px; overflow:hidden; position:relative;
+}
+.msg-arrow {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 14px; border-radius:7px;
+  font-weight:700; white-space:nowrap;
+  opacity:0; transform:translateX(-20px);
+  transition:opacity .5s, transform .5s;
+  position:absolute;
+}
+.msg-arrow.show { opacity:1; transform:translateX(0); }
+
+/* 스텝 로그 */
+.step-log {
+  display:flex; flex-direction:column; gap:6px; min-height:160px;
+}
+.log-entry {
+  display:flex; gap:10px; align-items:flex-start;
+  padding:8px 12px; border-radius:8px;
+  background:rgba(255,255,255,0.02); border:1px solid transparent;
+  font-size:12px; opacity:0; transform:translateY(8px);
+  transition:opacity .4s, transform .4s;
+}
+.log-entry.show { opacity:1; transform:translateY(0); }
+.log-step {
+  font-family:var(--mono); font-size:10px; font-weight:700;
+  padding:2px 8px; border-radius:5px; white-space:nowrap; flex-shrink:0;
+  margin-top:1px;
+}
+.log-text { color:var(--dim); line-height:1.6; }
+.log-result { font-family:var(--mono); font-size:11px; margin-top:3px; }
+
+/* 컨트롤 */
+.sim-controls {
+  display:flex; gap:10px; justify-content:center; margin-top:20px; flex-wrap:wrap;
+}
+.sim-btn {
+  padding:9px 24px; border-radius:9px; border:1px solid;
+  font-size:13px; font-weight:700; cursor:pointer;
+  font-family:var(--sans); transition:all .2s;
+}
+.btn-play  { border-color:var(--dns); color:var(--dns); background:transparent; }
+.btn-play:hover { background:var(--dnsd); }
+.btn-cache { border-color:var(--cache); color:var(--cache); background:transparent; }
+.btn-cache:hover { background:var(--cached); }
+.btn-reset { border-color:var(--muted); color:var(--muted); background:transparent; }
+.btn-reset:hover { background:rgba(255,255,255,.04); }
+
+/* ── DNS 레코드 타입 ── */
+.records-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;
+}
+.rec-card {
+  background:var(--surf); border:1px solid var(--border);
+  border-radius:12px; padding:16px;
+  transition:transform .2s; cursor:default;
+}
+.rec-card:hover { transform:translateY(-2px); }
+.rec-type {
+  font-family:var(--mono); font-size:16px; font-weight:700;
+  margin-bottom:8px;
+}
+.rec-name  { font-size:12px; font-weight:700; margin-bottom:4px; }
+.rec-desc  { font-size:11px; color:var(--dim); line-height:1.7; }
+.rec-ex {
+  margin-top:8px; padding:6px 10px; border-radius:6px;
+  font-family:var(--mono); font-size:10px; line-height:1.6;
+  background:rgba(0,0,0,.3);
+}
+
+/* ── 캐싱과 TTL ── */
+.ttl-vis {
+  background:var(--surf); border:1px solid var(--border);
+  border-radius:16px; padding:24px;
+}
+.ttl-bar-wrap {
+  height:14px; background:rgba(255,255,255,.04);
+  border-radius:8px; overflow:hidden; margin:10px 0 6px;
+  position:relative;
+}
+.ttl-bar {
+  height:100%; border-radius:8px;
+  transition:width 1s ease;
+}
+.ttl-row { margin-bottom:14px; }
+.ttl-label { font-size:12px; color:var(--dim); display:flex; justify-content:space-between; }
+.ttl-label span { font-family:var(--mono); font-size:11px; }
+
+/* ── 코드 박스 ── */
+.code-box {
+  background:#030508; border:1px solid var(--border);
+  border-radius:10px; padding:16px 18px;
+  font-family:var(--mono); font-size:12px;
+  line-height:1.85; overflow-x:auto;
+}
+.c-cmt  { color:var(--muted); }
+.c-key  { color:#93c5fd; }
+.c-val  { color:#fde68a; }
+.c-str  { color:#86efac; }
+.c-rec  { color:var(--dns); }
+.c-ip   { color:#fb923c; }
+.c-ok   { color:var(--good); }
+.c-q    { color:var(--auth); }
+
+/* ── 비교 테이블 ── */
+.cmp-table { width:100%; border-collapse:collapse; font-size:12px; }
+.cmp-table th {
+  padding:11px 14px; text-align:left; font-size:10px;
+  letter-spacing:2px; text-transform:uppercase; color:var(--muted);
+  font-family:var(--mono); border-bottom:1px solid var(--border);
+}
+.cmp-table td { padding:11px 14px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:top; line-height:1.65; }
+.cmp-table tr:hover td { background:rgba(255,255,255,.02); }
+
+/* ── 면접 포인트 ── */
+.tips-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px;
+}
+.tip-card {
+  background:var(--surf); border:1px solid var(--border);
+  border-radius:14px; padding:20px;
+  transition:transform .2s, box-shadow .2s;
+}
+.tip-card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,.4); }
+.ti { font-size:22px; margin-bottom:10px; }
+.tt { font-size:13px; font-weight:700; margin-bottom:6px; color:var(--dns); }
+.td { font-size:12px; color:var(--dim); line-height:1.75; }
+
+@keyframes up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- Hero -->
+<div class="hero">
+  <p class="hero-eyebrow">Network Layer · 면접 필수 · DNS Resolution</p>
+  <h1><span>DNS</span> 동작 원리</h1>
+  <p class="hero-sub">브라우저에 URL을 입력했을 때, 도메인 이름이 IP 주소로 변환되기까지 일어나는 모든 과정 — 계층적 조회, 캐싱, 레코드 타입까지</p>
+</div>
+
+<!-- DNS란? -->
+<div class="section s1">
+  <div class="sec-title"><div class="bar"></div>DNS란 무엇인가?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div style="background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:24px;border-left:3px solid var(--dns)">
+      <p style="font-size:14px;line-height:1.9;color:var(--dim)">
+        <strong style="color:var(--text)">DNS (Domain Name System)</strong>는 사람이 읽을 수 있는 도메인 이름을 컴퓨터가 이해할 수 있는 IP 주소로 변환하는 <strong style="color:var(--dns)">인터넷의 전화번호부</strong>입니다.<br><br>
+        <code style="font-family:var(--mono);color:#fb923c">www.google.com</code> 같은 이름을 기억하고 싶지만, 실제로 서버에 연결하려면 <code style="font-family:var(--mono);color:#fb923c">142.250.196.132</code> 같은 IP가 필요합니다.<br><br>
+        DNS는 이 변환을 <strong style="color:var(--text)">계층적으로 분산된 데이터베이스</strong>를 통해 처리합니다.
+      </p>
+    </div>
+    <div class="code-box" style="align-self:start">
+<span class="c-cmt"># DNS 없이는...</span>
+curl <span class="c-ip">142.250.196.132</span>
+
+<span class="c-cmt"># DNS 덕분에...</span>
+curl <span class="c-str">https://www.google.com</span>
+
+<span class="c-cmt"># DNS 조회 직접 해보기</span>
+nslookup <span class="c-str">www.google.com</span>
+<span class="c-ok">Non-authoritative answer:</span>
+<span class="c-key">Name:</span>    <span class="c-str">www.google.com</span>
+<span class="c-key">Address:</span> <span class="c-ip">142.250.196.132</span>
+
+dig <span class="c-str">www.google.com</span> +short
+<span class="c-ip">142.250.196.132</span>
+    </div>
+  </div>
+</div>
+
+<!-- DNS 계층 구조 -->
+<div class="section s2">
+  <div class="sec-title"><div class="bar"></div>DNS 계층 구조 — 4단계 서버</div>
+  <div class="hierarchy">
+    <div class="h-node" style="border-color:var(--dns)">
+      <div class="h-icon">💻</div>
+      <div class="h-name" style="color:var(--dns)">DNS Resolver</div>
+      <div class="h-desc">ISP 또는 공개 DNS 서버. 클라이언트 대신 전체 조회 과정을 수행합니다. Recursive Resolver라고도 합니다.</div>
+      <div class="h-example" style="background:var(--dnsd);color:var(--dns)">8.8.8.8 (Google)<br>1.1.1.1 (Cloudflare)</div>
+    </div>
+    <div class="h-node" style="border-color:var(--root)">
+      <div class="h-icon">🌍</div>
+      <div class="h-name" style="color:var(--root)">Root Name Server</div>
+      <div class="h-desc">DNS 계층의 최상위. TLD 서버의 주소를 알고 있습니다. 전 세계에 13개 루트 서버 클러스터(A~M)가 있습니다.</div>
+      <div class="h-example" style="background:var(--rootd);color:var(--root)">a.root-servers.net<br>198.41.0.4</div>
+    </div>
+    <div class="h-node" style="border-color:var(--tld)">
+      <div class="h-icon">🗂️</div>
+      <div class="h-name" style="color:var(--tld)">TLD Name Server</div>
+      <div class="h-desc">최상위 도메인(.com, .net, .kr 등)을 관리합니다. 해당 TLD 내 Authoritative 서버 주소를 알고 있습니다.</div>
+      <div class="h-example" style="background:var(--tldd);color:var(--tld)">.com TLD 서버<br>.kr TLD 서버</div>
+    </div>
+    <div class="h-node" style="border-color:var(--auth)">
+      <div class="h-icon">📋</div>
+      <div class="h-name" style="color:var(--auth)">Authoritative NS</div>
+      <div class="h-desc">실제 도메인의 DNS 레코드를 보유한 최종 권한 서버입니다. 여기서 IP 주소를 최종 응답합니다.</div>
+      <div class="h-example" style="background:var(--authd);color:var(--auth)">ns1.google.com<br>ns2.google.com</div>
+    </div>
+  </div>
+
+  <!-- 루트 서버 설명 -->
+  <div style="background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:16px 20px;font-size:13px;color:var(--dim);line-height:1.8">
+    🌍 <strong style="color:var(--root)">루트 서버는 전 세계에 13개?</strong> — 정확히는 A~M 라벨의 13개 <em>클러스터</em>입니다. Anycast 기술로 각 클러스터가 전 세계 수백 개 서버로 분산되어 있습니다. 실제 물리적 서버는 1,000개 이상입니다.
+  </div>
+</div>
+
+<!-- DNS 쿼리 흐름 시뮬레이터 -->
+<div class="section s3">
+  <div class="sec-title"><div class="bar"></div>DNS 조회 과정 시뮬레이션 — www.example.com</div>
+  <div class="query-sim">
+    <div class="qs-header">
+      <div class="qs-dot" style="background:#f87171"></div>
+      <div class="qs-dot" style="background:#fbbf24"></div>
+      <div class="qs-dot" style="background:#4ade80"></div>
+      <div class="qs-title">DNS Query Simulator · 캐시 없는 최초 조회</div>
+    </div>
+    <div class="qs-body">
+
+      <!-- DNS 노드들 -->
+      <div class="dns-nodes">
+        <div class="dns-node n-client" id="nd-client">
+          <span class="dn-icon">🖥️</span>
+          <div class="dn-name" style="color:var(--dns)">CLIENT</div>
+          <div class="dn-sub">브라우저</div>
+        </div>
+        <div class="dns-node n-local" id="nd-local">
+          <span class="dn-icon">🔄</span>
+          <div class="dn-name" style="color:var(--cache)">RESOLVER</div>
+          <div class="dn-sub">8.8.8.8</div>
+        </div>
+        <div class="dns-node n-root" id="nd-root">
+          <span class="dn-icon">🌍</span>
+          <div class="dn-name" style="color:var(--root)">ROOT NS</div>
+          <div class="dn-sub">a.root-servers.net</div>
+        </div>
+        <div class="dns-node n-tld" id="nd-tld">
+          <span class="dn-icon">🗂️</span>
+          <div class="dn-name" style="color:var(--tld)">TLD NS</div>
+          <div class="dn-sub">.com 서버</div>
+        </div>
+        <div class="dns-node n-auth" id="nd-auth">
+          <span class="dn-icon">📋</span>
+          <div class="dn-name" style="color:var(--auth)">AUTH NS</div>
+          <div class="dn-sub">ns1.example.com</div>
+        </div>
+      </div>
+
+      <!-- 메시지 흐름 -->
+      <div class="msg-flow" id="msg-flow">
+        <div class="msg-arrow" id="msg-arrow">
+          <span id="msg-from"></span>
+          <span id="msg-dir"></span>
+          <span id="msg-to"></span>
+          <span style="color:var(--muted)">|</span>
+          <span id="msg-content" style="font-weight:400"></span>
+        </div>
+        <span style="color:var(--muted);font-size:11px" id="msg-idle">▶ 재생 버튼을 눌러 DNS 조회 과정을 확인하세요</span>
+      </div>
+
+      <!-- 스텝 로그 -->
+      <div class="step-log" id="step-log">
+        <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">
+          DNS 조회 단계가 여기에 표시됩니다
+        </div>
+      </div>
+
+      <!-- 컨트롤 -->
+      <div class="sim-controls">
+        <button class="sim-btn btn-play" onclick="playSim()">▶ 일반 조회 재생</button>
+        <button class="sim-btn btn-cache" onclick="playCached()">⚡ 캐시 히트 재생</button>
+        <button class="sim-btn btn-reset" onclick="resetSim()">↺ 초기화</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DNS 레코드 타입 -->
+<div class="section s4">
+  <div class="sec-title"><div class="bar"></div>DNS 레코드 타입</div>
+  <div class="records-grid">
+    <div class="rec-card" style="border-top:2px solid var(--dns)">
+      <div class="rec-type" style="color:var(--dns)">A</div>
+      <div class="rec-name">IPv4 주소 매핑</div>
+      <div class="rec-desc">도메인을 IPv4 주소로 변환합니다. 가장 기본적이고 많이 사용되는 레코드입니다.</div>
+      <div class="rec-ex"><span style="color:var(--str)">example.com.</span> IN A <span style="color:#fb923c">93.184.216.34</span></div>
+    </div>
+    <div class="rec-card" style="border-top:2px solid #60a5fa">
+      <div class="rec-type" style="color:#60a5fa">AAAA</div>
+      <div class="rec-name">IPv6 주소 매핑</div>
+      <div class="rec-desc">도메인을 IPv6 주소로 변환합니다. 128비트 주소를 사용합니다.</div>
+      <div class="rec-ex"><span style="color:var(--str)">example.com.</span> IN AAAA <span style="color:#fb923c">2606:2800::1</span></div>
+    </div>
+    <div class="rec-card" style="border-top:2px solid var(--tld)">
+      <div class="rec-type" style="color:var(--tld)">CNAME</div>
+      <div class="rec-name">별칭 (Alias)</div>
+      <div class="rec-desc">다른 도메인의 별칭을 만듭니다. www를 apex 도메인으로 연결하는 데 주로 사용됩니다.</div>
+      <div class="rec-ex"><span style="color:var(--str)">www.example.com.</span> IN CNAME <span style="color:#86efac">example.com.</span></div>
+    </div>
+    <div class="rec-card" style="border-top:2px solid var(--auth)">
+      <div class="rec-type" style="color:var(--auth)">NS</div>
+      <div class="rec-name">네임서버</div>
+      <div class="rec-desc">도메인의 권한 있는 네임서버를 지정합니다. 도메인 등록 시 필수로 설정됩니다.</div>
+      <div class="rec-ex"><span style="color:var(--str)">example.com.</span> IN NS <span style="color:#c084fc">ns1.example.com.</span></div>
+    </div>
+    <div class="rec-card" style="border-top:2px solid var(--root)">
+      <div class="rec-type" style="color:var(--root)">MX</div>
+      <div class="rec-name">메일 서버</div>
+      <div class="rec-desc">이메일을 받을 메일 서버를 지정합니다. 우선순위(Priority) 값이 낮을수록 먼저 시도됩니다.</div>
+      <div class="rec-ex"><span style="color:var(--str)">example.com.</span> IN MX 10 <span style="color:#fbbf24">mail.example.com.</span></div>
+    </div>
+    <div class="rec-card" style="border-top:2px solid var(--cache)">
+      <div class="rec-type" style="color:var(--cache)">TXT</div>
+      <div class="rec-name">텍스트 데이터</div>
+      <div class="rec-desc">임의의 텍스트를 저장합니다. 도메인 소유권 확인, SPF, DKIM 등 이메일 인증에 사용됩니다.</div>
+      <div class="rec-ex"><span style="color:var(--str)">example.com.</span> IN TXT <span style="color:#86efac">"v=spf1 include:..."</span></div>
+    </div>
+    <div class="rec-card" style="border-top:2px solid #f472b6">
+      <div class="rec-type" style="color:#f472b6">PTR</div>
+      <div class="rec-name">역방향 조회</div>
+      <div class="rec-desc">IP 주소에서 도메인 이름을 찾습니다. 역방향 DNS(rDNS) 조회에 사용됩니다.</div>
+      <div class="rec-ex"><span style="color:#fb923c">34.216.184.93</span>.in-addr.arpa PTR <span style="color:#86efac">example.com.</span></div>
+    </div>
+    <div class="rec-card" style="border-top:2px solid #34d399">
+      <div class="rec-type" style="color:#34d399">SOA</div>
+      <div class="rec-name">권한 시작 (Start of Authority)</div>
+      <div class="rec-desc">존(Zone)의 권한 정보와 타이머 값을 포함합니다. 각 DNS 존에 반드시 하나 있습니다.</div>
+      <div class="rec-ex">시리얼번호, Refresh, Retry, Expire, TTL 포함</div>
+    </div>
+  </div>
+</div>
+
+<!-- 캐싱과 TTL -->
+<div class="section s5">
+  <div class="sec-title"><div class="bar"></div>캐싱과 TTL (Time To Live)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="ttl-vis">
+      <p style="font-size:13px;color:var(--dim);margin-bottom:20px;line-height:1.75">
+        DNS 응답은 <strong style="color:var(--text)">TTL 값</strong>만큼 캐싱됩니다. TTL이 만료되면 다시 조회합니다. <strong style="color:var(--cache)">캐시 히트</strong> 시에는 Root→TLD→Auth 서버에 조회 없이 바로 응답합니다.
+      </p>
+
+      <div class="ttl-row">
+        <div class="ttl-label"><span>브라우저 캐시</span><span style="color:var(--good)">TTL: ~60초</span></div>
+        <div class="ttl-bar-wrap"><div class="ttl-bar" style="width:15%;background:linear-gradient(90deg,var(--good),#86efac)"></div></div>
+        <div style="font-size:11px;color:var(--muted)">가장 짧음. 브라우저가 자체적으로 저장</div>
+      </div>
+      <div class="ttl-row">
+        <div class="ttl-label"><span>OS / Local 캐시</span><span style="color:var(--dns)">TTL: ~300초</span></div>
+        <div class="ttl-bar-wrap"><div class="ttl-bar" style="width:35%;background:linear-gradient(90deg,var(--dns),#93c5fd)"></div></div>
+        <div style="font-size:11px;color:var(--muted)">/etc/hosts, nscd, systemd-resolved</div>
+      </div>
+      <div class="ttl-row">
+        <div class="ttl-label"><span>Recursive Resolver</span><span style="color:var(--cache)">TTL: ~3600초</span></div>
+        <div class="ttl-bar-wrap"><div class="ttl-bar" style="width:65%;background:linear-gradient(90deg,var(--cache),#67e8f9)"></div></div>
+        <div style="font-size:11px;color:var(--muted)">ISP 또는 공개 DNS 서버 레벨</div>
+      </div>
+      <div class="ttl-row">
+        <div class="ttl-label"><span>TLD 서버 캐시</span><span style="color:var(--root)">TTL: ~172800초</span></div>
+        <div class="ttl-bar-wrap"><div class="ttl-bar" style="width:90%;background:linear-gradient(90deg,var(--root),#fcd34d)"></div></div>
+        <div style="font-size:11px;color:var(--muted)">약 48시간. 변경 시 전파에 시간 소요</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="code-box" style="margin-bottom:12px">
+<span class="c-cmt"># DNS 조회 경로 (캐시 확인 순서)</span>
+
+<span class="c-key">1.</span> 브라우저 DNS 캐시
+   chrome://net-internals/#dns
+
+<span class="c-key">2.</span> OS 캐시 (hosts 파일 포함)
+   /etc/hosts
+   <span class="c-ip">127.0.0.1</span>   <span class="c-str">localhost</span>
+   <span class="c-ip">192.168.1.1</span> <span class="c-str">myserver.local</span>
+
+<span class="c-key">3.</span> Recursive Resolver 캐시
+   (8.8.8.8, 1.1.1.1)
+
+<span class="c-key">4.</span> Root → TLD → Auth NS 순서 조회
+      </div>
+      <div style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);border-radius:10px;padding:14px 16px;font-size:12px;color:var(--dim);line-height:1.8">
+        💡 <strong style="color:var(--cache)">TTL 설정 전략</strong><br>
+        • <strong style="color:var(--text)">낮은 TTL (60초)</strong>: 빠른 변경 가능 → 서버 마이그레이션, A/B 테스트<br>
+        • <strong style="color:var(--text)">높은 TTL (86400초)</strong>: DNS 트래픽 감소 → 안정적인 서비스<br>
+        • 변경 전 TTL을 미리 낮게 설정하는 것이 좋은 관행입니다
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 재귀 vs 반복 조회 -->
+<div class="section s5">
+  <div class="sec-title"><div class="bar"></div>재귀적 조회 vs 반복적 조회</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px;border-left:3px solid var(--dns)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--dns)">🔁 재귀적 조회 (Recursive Query)</div>
+      <div style="font-size:12px;color:var(--dim);line-height:1.8;margin-bottom:14px">
+        클라이언트가 <strong style="color:var(--text)">Recursive Resolver에게 최종 답을 달라</strong>고 요청합니다. Resolver가 Root→TLD→Auth 모든 조회를 대신 수행해서 IP를 반환합니다.<br><br>
+        클라이언트 ↔ Resolver 구간에서 사용됩니다.
+      </div>
+      <div class="code-box" style="font-size:11px">
+<span class="c-cmt"># 클라이언트 → Resolver</span>
+<span class="c-q">Q:</span> www.example.com의 IP가 뭐야?
+<span class="c-ok">A:</span> <span class="c-ip">93.184.216.34</span> (최종 답 반환)
+<span class="c-cmt"># Resolver가 모두 대신 처리</span>
+      </div>
+    </div>
+    <div style="background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px;border-left:3px solid var(--root)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--root)">🔄 반복적 조회 (Iterative Query)</div>
+      <div style="font-size:12px;color:var(--dim);line-height:1.8;margin-bottom:14px">
+        Resolver가 각 DNS 서버에게 <strong style="color:var(--text)">"다음에 물어볼 서버"를 응답받아</strong> 단계적으로 조회합니다. 서버가 최종 답 대신 참조할 서버 주소를 알려줍니다.<br><br>
+        Resolver ↔ Root/TLD/Auth NS 구간에서 사용됩니다.
+      </div>
+      <div class="code-box" style="font-size:11px">
+<span class="c-cmt"># Resolver → Root NS</span>
+<span class="c-q">Q:</span> www.example.com?
+<span class="c-ok">A:</span> 모름, <span class="c-val">.com TLD 서버</span> 물어봐
+
+<span class="c-cmt"># Resolver → TLD NS</span>
+<span class="c-q">Q:</span> www.example.com?
+<span class="c-ok">A:</span> 모름, <span class="c-val">ns1.example.com</span> 물어봐
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 비교 테이블 -->
+<div class="section s6">
+  <div class="sec-title"><div class="bar"></div>공개 DNS 서버 비교</div>
+  <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--border)">
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>서비스</th><th>Primary</th><th>Secondary</th><th>특징</th><th>DoH / DoT</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:700;color:#4ade80">Google</td>
+          <td style="font-family:var(--mono);color:#fb923c">8.8.8.8</td>
+          <td style="font-family:var(--mono);color:#fb923c">8.8.4.4</td>
+          <td style="color:var(--dim);font-size:12px">빠르고 안정적. 가장 널리 사용됨</td>
+          <td style="color:var(--good)">✓</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:#fb923c">Cloudflare</td>
+          <td style="font-family:var(--mono);color:#fb923c">1.1.1.1</td>
+          <td style="font-family:var(--mono);color:#fb923c">1.0.0.1</td>
+          <td style="color:var(--dim);font-size:12px">세계에서 가장 빠른 DNS. 개인정보 중시</td>
+          <td style="color:var(--good)">✓</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:#60a5fa">OpenDNS</td>
+          <td style="font-family:var(--mono);color:#fb923c">208.67.222.222</td>
+          <td style="font-family:var(--mono);color:#fb923c">208.67.220.220</td>
+          <td style="color:var(--dim);font-size:12px">피싱/악성 도메인 자동 차단 기능</td>
+          <td style="color:var(--good)">✓</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:var(--dim)">KT (Korea)</td>
+          <td style="font-family:var(--mono);color:#fb923c">168.126.63.1</td>
+          <td style="font-family:var(--mono);color:#fb923c">168.126.63.2</td>
+          <td style="color:var(--dim);font-size:12px">국내 ISP 기본 DNS. 국내 레이턴시 낮음</td>
+          <td style="color:var(--bad)">✗</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:12px;padding:12px 16px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.2);border-radius:10px;font-size:12px;color:var(--dim);line-height:1.75">
+    💡 <strong style="color:var(--dns)">DoH (DNS over HTTPS)</strong> / <strong style="color:var(--dns)">DoT (DNS over TLS)</strong>: 기존 DNS는 평문으로 쿼리가 전송되어 ISP나 중간자가 조회 내용을 볼 수 있습니다. DoH/DoT는 DNS 쿼리를 암호화하여 프라이버시를 보호합니다.
+  </div>
+</div>
+
+<!-- 면접 포인트 -->
+<div class="section s6">
+  <div class="sec-title"><div class="bar"></div>🎯 면접 핵심 포인트</div>
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="ti">🔢</div>
+      <div class="tt">루트 서버는 왜 13개인가?</div>
+      <div class="td">DNS 메시지는 UDP 512바이트 제한이 있었고, 모든 루트 서버 IP를 한 패킷에 담으려면 13개가 최대였습니다. 현재는 Anycast로 각 라벨당 수백 개 서버가 분산 운영됩니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">⚡</div>
+      <div class="tt">DNS 캐시 포이즈닝</div>
+      <div class="td">공격자가 Resolver의 캐시에 가짜 DNS 응답을 주입하는 공격입니다. DNSSEC(DNS Security Extensions)로 응답에 디지털 서명을 추가해 방어합니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🔄</div>
+      <div class="tt">CNAME vs A 레코드</div>
+      <div class="td">A 레코드는 IP를 직접 반환하고, CNAME은 다른 도메인을 가리킵니다. CNAME은 추가 DNS 조회가 필요하고, apex 도메인(example.com)에는 CNAME을 사용할 수 없습니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">📡</div>
+      <div class="tt">DNS는 UDP를 쓰는 이유?</div>
+      <div class="td">DNS 쿼리는 작고 빠른 응답이 필요하기 때문에 연결 설정이 없는 UDP(포트 53)를 사용합니다. 응답이 512바이트를 초과하거나 Zone Transfer 시에는 TCP를 사용합니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🌐</div>
+      <div class="tt">TTL과 DNS 전파</div>
+      <div class="td">DNS 변경 후 전파 시간은 기존 TTL 값에 따라 결정됩니다. 변경 전 TTL을 낮게(300초) 설정하고, 변경 완료 후 다시 높이는 것이 권장 관행입니다.</div>
+    </div>
+    <div class="tip-card">
+      <div class="ti">🔒</div>
+      <div class="tt">DoH vs DoT</div>
+      <div class="td"><strong style="color:#60a5fa">DoH</strong>는 443 포트 HTTPS로 DNS를 전송 (방화벽 우회 용이). <strong style="color:#4ade80">DoT</strong>는 853 포트 TLS 전용 (구분이 명확). 둘 다 DNS 쿼리를 암호화하여 프라이버시를 보호합니다.</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+var steps = [
+  {
+    from:'CLIENT', to:'RESOLVER', dir:'→', color:'var(--dns)',
+    content:'www.example.com IP 알려줘 (재귀 쿼리)',
+    node:'nd-local',
+    text:'브라우저가 OS에 설정된 DNS Resolver(8.8.8.8)에게 재귀적 쿼리를 전송합니다.',
+    result:null,
+    step:'①', stepColor:'var(--dns)'
+  },
+  {
+    from:'RESOLVER', to:'ROOT NS', dir:'→', color:'var(--root)',
+    content:'www.example.com? (반복 쿼리)',
+    node:'nd-root',
+    text:'Resolver의 캐시에 없습니다. Root Name Server에 반복적 쿼리를 전송합니다.',
+    result:null,
+    step:'②', stepColor:'var(--root)'
+  },
+  {
+    from:'ROOT NS', to:'RESOLVER', dir:'←', color:'var(--root)',
+    content:'.com TLD 서버 주소 알려줌 (Referral)',
+    node:'nd-root',
+    text:'Root NS는 IP를 모릅니다. 대신 .com TLD 서버 주소를 Referral로 반환합니다.',
+    result:'→ .com TLD: 192.5.6.30',
+    step:'③', stepColor:'var(--root)'
+  },
+  {
+    from:'RESOLVER', to:'TLD NS', dir:'→', color:'var(--tld)',
+    content:'www.example.com? (반복 쿼리)',
+    node:'nd-tld',
+    text:'.com TLD Name Server에 다시 쿼리합니다.',
+    result:null,
+    step:'④', stepColor:'var(--tld)'
+  },
+  {
+    from:'TLD NS', to:'RESOLVER', dir:'←', color:'var(--tld)',
+    content:'ns1.example.com 주소 알려줌 (Referral)',
+    node:'nd-tld',
+    text:'.com TLD도 IP를 모릅니다. example.com의 Authoritative NS 주소를 알려줍니다.',
+    result:'→ Auth NS: ns1.example.com / 205.251.196.1',
+    step:'⑤', stepColor:'var(--tld)'
+  },
+  {
+    from:'RESOLVER', to:'AUTH NS', dir:'→', color:'var(--auth)',
+    content:'www.example.com? (반복 쿼리)',
+    node:'nd-auth',
+    text:'Authoritative Name Server에 최종 쿼리를 전송합니다.',
+    result:null,
+    step:'⑥', stepColor:'var(--auth)'
+  },
+  {
+    from:'AUTH NS', to:'RESOLVER', dir:'←', color:'var(--auth)',
+    content:'93.184.216.34 (A 레코드, TTL: 3600)',
+    node:'nd-auth',
+    text:'Authoritative NS가 최종 IP 주소를 A 레코드로 응답합니다. Resolver는 TTL만큼 캐싱합니다.',
+    result:'✓ IP: 93.184.216.34 (캐시 저장 TTL 3600s)',
+    step:'⑦', stepColor:'var(--good)'
+  },
+  {
+    from:'RESOLVER', to:'CLIENT', dir:'←', color:'var(--dns)',
+    content:'93.184.216.34 (최종 응답)',
+    node:'nd-client',
+    text:'Resolver가 클라이언트에게 최종 IP를 반환합니다. 이제 브라우저가 해당 IP로 TCP 연결을 시작합니다.',
+    result:'✅ www.example.com → 93.184.216.34 — DNS 조회 완료!',
+    step:'⑧', stepColor:'var(--good)'
+  }
+];
+
+var cachedSteps = [
+  {
+    from:'CLIENT', to:'RESOLVER', dir:'→', color:'var(--dns)',
+    content:'www.example.com IP 알려줘',
+    node:'nd-local',
+    text:'브라우저가 DNS Resolver에 쿼리를 전송합니다.',
+    result:null,
+    step:'①', stepColor:'var(--dns)'
+  },
+  {
+    from:'RESOLVER', to:'CLIENT', dir:'←', color:'var(--cache)',
+    content:'93.184.216.34 (캐시 히트! TTL 남은 시간: 2847s)',
+    node:'nd-client',
+    text:'캐시 히트! Resolver가 이미 캐싱된 응답을 즉시 반환합니다. Root/TLD/Auth 서버 조회가 전혀 없습니다.',
+    result:'⚡ 캐시 히트 — Root/TLD/Auth NS 조회 없이 즉시 응답! 대폭 빠름',
+    step:'②', stepColor:'var(--cache)'
+  }
+];
+
+var playing = false;
+var timer = null;
+
+function resetSim() {
+  playing = false;
+  if(timer) clearTimeout(timer);
+  document.querySelectorAll('.dns-node').forEach(function(n){ n.classList.remove('active'); });
+  var arrow = document.getElementById('msg-arrow');
+  var idle  = document.getElementById('msg-idle');
+  arrow.classList.remove('show');
+  idle.style.display = '';
+  document.getElementById('step-log').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">DNS 조회 단계가 여기에 표시됩니다</div>';
+}
+
+function runSteps(stepsArr) {
+  if(playing) return;
+  resetSim();
+  playing = true;
+  var log = document.getElementById('step-log');
+  log.innerHTML = '';
+  var idle = document.getElementById('msg-idle');
+  idle.style.display = 'none';
+
+  function doStep(i) {
+    if(i >= stepsArr.length) { playing = false; return; }
+    var s = stepsArr[i];
+
+    // 노드 하이라이트
+    document.querySelectorAll('.dns-node').forEach(function(n){ n.classList.remove('active'); });
+    var nd = document.getElementById(s.node);
+    if(nd) nd.classList.add('active');
+
+    // 메시지 화살표
+    var arrow = document.getElementById('msg-arrow');
+    arrow.style.color = s.color;
+    document.getElementById('msg-from').textContent = s.from;
+    document.getElementById('msg-from').style.color = s.color;
+    document.getElementById('msg-dir').textContent = s.dir;
+    document.getElementById('msg-dir').style.color = s.color;
+    document.getElementById('msg-to').textContent = s.to;
+    document.getElementById('msg-to').style.color = s.color;
+    document.getElementById('msg-content').textContent = s.content;
+    arrow.classList.remove('show');
+    setTimeout(function(){ arrow.classList.add('show'); }, 50);
+
+    // 로그 항목
+    var entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.style.borderColor = s.stepColor + '40';
+    entry.innerHTML =
+      '<div class="log-step" style="background:' + s.stepColor + '20;color:' + s.stepColor + ';border:1px solid ' + s.stepColor + '50">' + s.step + '</div>' +
+      '<div>' +
+        '<div class="log-text">' + s.text + '</div>' +
+        (s.result ? '<div class="log-result" style="color:' + s.stepColor + '">' + s.result + '</div>' : '') +
+      '</div>';
+    log.appendChild(entry);
+    setTimeout(function(){ entry.classList.add('show'); }, 50);
+    entry.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+    timer = setTimeout(function(){ doStep(i+1); }, 1400);
+  }
+  doStep(0);
+}
+
+function playSim()    { runSteps(steps); }
+function playCached() { runSteps(cachedSteps); }
+</script>
+</body>
+</html>

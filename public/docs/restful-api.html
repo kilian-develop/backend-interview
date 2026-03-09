@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESTful API</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:ital,wght@0,900;1,700&display=swap');
+:root{
+  --bg:#060911;--surf:#0b0f1c;--surf2:#101626;--border:#192035;
+  --text:#e4ebf8;--dim:#7a90b0;--muted:#374d6a;
+  --rest:#10b981;--restd:rgba(16,185,129,0.12);
+  --get:#06b6d4;--getd:rgba(6,182,212,0.12);
+  --post:#10b981;--postd:rgba(16,185,129,0.12);
+  --put:#f59e0b;--putd:rgba(245,158,11,0.12);
+  --patch:#a855f7;--patchd:rgba(168,85,247,0.12);
+  --del:#f87171;--deld:rgba(248,113,113,0.12);
+  --warn:#fb923c;--good:#4ade80;--bad:#f87171;
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Fraunces',serif;
+  --sans:'Noto Sans KR',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(16,185,129,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.02) 1px,transparent 1px);background-size:52px 52px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 55% 40% at 5% 15%,rgba(16,185,129,0.06) 0%,transparent 55%),radial-gradient(ellipse 45% 35% at 95% 85%,rgba(6,182,212,0.05) 0%,transparent 55%);pointer-events:none;z-index:0}
+.wrap{max-width:1060px;margin:0 auto;padding:60px 20px 100px;position:relative;z-index:1}
+.hero{text-align:center;margin-bottom:60px}
+.hero-tag{font-family:var(--mono);font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;opacity:0;animation:up .6s ease forwards .1s}
+.hero h1{font-family:var(--serif);font-size:clamp(32px,6vw,58px);font-weight:900;line-height:1.1;margin-bottom:14px;opacity:0;animation:up .6s ease forwards .3s}
+.hero h1 em{font-style:italic;color:var(--rest)}
+.hero-sub{font-size:14px;color:var(--dim);line-height:1.85;max-width:560px;margin:0 auto;opacity:0;animation:up .6s ease forwards .5s}
+.section{margin-bottom:56px;opacity:0;animation:up .6s ease forwards}
+.s1{animation-delay:.6s}.s2{animation-delay:.7s}.s3{animation-delay:.75s}.s4{animation-delay:.8s}.s5{animation-delay:.85s}.s6{animation-delay:.9s}.s7{animation-delay:.95s}
+.sec-title{font-size:17px;font-weight:700;margin-bottom:22px;display:flex;align-items:center;gap:10px}
+.sec-title .bar{width:4px;height:20px;border-radius:2px;background:linear-gradient(to bottom,var(--rest),var(--get))}
+.badge{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:24px}
+.principles-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.principle{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:20px;border-left:3px solid var(--rest);transition:transform .2s,box-shadow .2s;cursor:default}
+.principle:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(16,185,129,0.08)}
+.p-num{font-family:var(--mono);font-size:10px;color:var(--rest);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase}
+.p-title{font-size:14px;font-weight:700;margin-bottom:8px}
+.p-desc{font-size:12px;color:var(--dim);line-height:1.75}
+.p-example{margin-top:10px;padding:8px 12px;border-radius:7px;font-family:var(--mono);font-size:11px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--rest);line-height:1.6}
+.method-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.method-tab{padding:7px 18px;border-radius:8px;border:1px solid var(--border);font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;background:transparent;color:var(--dim)}
+.method-tab:hover{transform:translateY(-2px)}
+.mt-get{background:var(--getd);border-color:var(--get);color:var(--get)}
+.mt-post{background:var(--postd);border-color:var(--post);color:var(--post)}
+.mt-put{background:var(--putd);border-color:var(--put);color:var(--put)}
+.mt-patch{background:var(--patchd);border-color:var(--patch);color:var(--patch)}
+.mt-del{background:var(--deld);border-color:var(--del);color:var(--del)}
+.method-panel{display:none}.method-panel.active{display:block;animation:fadeIn .3s ease}
+.method-header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.method-badge{font-family:var(--mono);font-size:18px;font-weight:700;padding:8px 18px;border-radius:9px;border:2px solid}
+.method-info h3{font-size:16px;font-weight:700;margin-bottom:4px}
+.method-info p{font-size:12px;color:var(--dim);line-height:1.6}
+.method-props{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.prop-chip{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);border:1px solid}
+.ex-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.ex-row{grid-template-columns:1fr}}
+.code-box{background:#050810;border:1px solid var(--border);border-radius:10px;padding:16px 18px;font-family:var(--mono);font-size:12px;line-height:1.85;overflow-x:auto}
+.c-cmt{color:var(--muted)}.c-get{color:var(--get)}.c-post{color:var(--post)}.c-put{color:var(--put)}.c-pat{color:var(--patch)}.c-del{color:var(--del)}
+.c-url{color:#94a3b8}.c-hdr{color:#c084fc}.c-key{color:#7dd3fc}.c-val{color:#fde68a}.c-str{color:#86efac}.c-ok{color:var(--good)}.c-err{color:var(--bad)}.c-num{color:var(--warn)}
+.uri-guide{display:flex;flex-direction:column;gap:8px}
+.uri-row{display:grid;grid-template-columns:28px 1fr 1fr;gap:12px;align-items:start;padding:10px 14px;border-radius:8px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:12px}
+.uri-icon{font-size:16px}.uri-good{color:var(--good);font-family:var(--mono);line-height:1.6}.uri-bad{color:var(--bad);font-family:var(--mono);line-height:1.6}.uri-desc{font-size:11px;color:var(--dim);margin-top:4px}
+.status-groups{display:flex;flex-direction:column;gap:16px}
+.sg-title{font-family:var(--mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:8px}
+.status-codes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.status-card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;transition:transform .2s;cursor:default}
+.status-card:hover{transform:translateY(-2px)}.sc-code{font-family:var(--mono);font-size:16px;font-weight:700;flex-shrink:0;min-width:40px;line-height:1.2}.sc-info h4{font-size:12px;font-weight:700;margin-bottom:3px}.sc-info p{font-size:11px;color:var(--dim);line-height:1.6}
+.cmp-table{width:100%;border-collapse:collapse;font-size:12px}
+.cmp-table th{padding:12px 14px;text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border)}
+.cmp-table td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;line-height:1.6}
+.cmp-table tr:hover td{background:rgba(255,255,255,.02)}
+.playground{background:var(--surf);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.pg-header{background:var(--surf2);padding:14px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.pg-dot{width:10px;height:10px;border-radius:50%}.pg-title{font-family:var(--mono);font-size:12px;color:var(--dim);margin-left:8px}
+.pg-body{padding:20px}.pg-resource-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.pg-rtab{padding:6px 16px;border-radius:7px;border:1px solid var(--border);font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;background:transparent;color:var(--dim)}
+.pg-rtab.active{background:var(--restd);border-color:var(--rest);color:var(--rest)}
+.pg-endpoints{display:flex;flex-direction:column;gap:6px}
+.endpoint{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;transition:all .2s}
+.endpoint:hover{border-color:var(--rest);background:rgba(16,185,129,.04)}.endpoint.selected{border-color:var(--rest);background:rgba(16,185,129,.06)}
+.ep-method{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 10px;border-radius:5px;min-width:58px;text-align:center}
+.ep-url{font-family:var(--mono);font-size:12px;color:#94a3b8;flex:1}.ep-desc{font-size:11px;color:var(--dim);flex-shrink:0}
+.ep-detail{margin-top:10px;display:none;padding:12px;background:rgba(0,0,0,.2);border-radius:10px;border:1px solid var(--border)}.ep-detail.open{display:block}
+.ep-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:580px){.ep-grid{grid-template-columns:1fr}}
+.ep-panel-title{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.dc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}@media(max-width:580px){.dc-row{grid-template-columns:1fr}}
+.dc-box{border-radius:10px;padding:14px 16px;font-family:var(--mono);font-size:11px;line-height:1.8}
+.dc-bad{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.25)}.dc-good{background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.25)}
+.dc-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}.dc-bad .dc-label{color:var(--bad)}.dc-good .dc-label{color:var(--good)}
+.tips-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.tip-card{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:20px;transition:transform .2s,box-shadow .2s}
+.tip-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,.4)}
+.ti{font-size:22px;margin-bottom:10px}.tt{font-size:13px;font-weight:700;margin-bottom:6px;color:var(--rest)}.td{font-size:12px;color:var(--dim);line-height:1.75}
+.good{color:#4ade80}.warn{color:#fbbf24}.bad{color:#f87171}
+@keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hero">
+  <p class="hero-tag">API Design &middot; Web Architecture &middot; 면접 필수</p>
+  <h1><em>RESTful</em> API</h1>
+  <p class="hero-sub">REST의 6가지 제약 조건, HTTP 메서드와 상태 코드의 올바른 사용, URI 설계 원칙까지 &mdash; 실전 면접에서 꺼낼 수 있는 완벽 가이드</p>
+</div>
+
+<div class="section s1">
+  <div class="sec-title"><div class="bar"></div>REST란 무엇인가?</div>
+  <div class="card" style="border-left:3px solid var(--rest)">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div>
+        <p style="font-size:14px;line-height:1.9;color:var(--dim)">
+          <strong style="color:var(--text)">REST (Representational State Transfer)</strong>는 2000년 Roy Fielding의 박사 논문에서 제안된 웹 아키텍처 스타일입니다.<br><br>
+          REST는 특정 기술이 아닌 <strong style="color:var(--rest)">6가지 제약 조건(Constraints)</strong>의 집합이며, 이 조건을 지킨 API를 <strong style="color:var(--rest)">RESTful API</strong>라고 부릅니다.<br><br>
+          HTTP의 설계 철학을 그대로 활용하기 때문에 별도 프로토콜 없이 HTTP만으로 구현 가능합니다.
+        </p>
+      </div>
+      <div>
+        <div class="code-box" style="font-size:11px"><span class="c-cmt"># REST의 핵심 구성 요소</span>
+
+<span class="c-key">Resource (자원)</span>
+  URI로 자원을 식별
+  <span class="c-url">/users, /posts/123, /orders</span>
+
+<span class="c-key">Representation (표현)</span>
+  자원의 상태를 JSON/XML로 표현
+  <span class="c-str">{ "id": 1, "name": "Kilian" }</span>
+
+<span class="c-key">State Transfer (상태 전달)</span>
+  HTTP 메서드로 자원의 상태를 변경
+  <span class="c-get">GET</span> &middot; <span class="c-post">POST</span> &middot; <span class="c-put">PUT</span> &middot; <span class="c-del">DELETE</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section s2">
+  <div class="sec-title"><div class="bar"></div>REST의 6가지 제약 조건 <span class="badge" style="border-color:var(--rest);color:var(--rest)">핵심</span></div>
+  <div class="principles-grid">
+    <div class="principle"><div class="p-num">Constraint 01</div><div class="p-title">🖥️ 클라이언트-서버 구조</div><div class="p-desc">UI(클라이언트)와 데이터 저장(서버)을 분리합니다. 서로 독립적으로 발전 가능하며 클라이언트는 URI만 알면 됩니다.</div><div class="p-example">Client ↔ Server 독립 배포 가능<br>Frontend / Backend 분리 구조</div></div>
+    <div class="principle"><div class="p-num">Constraint 02</div><div class="p-title">🔒 무상태 (Stateless)</div><div class="p-desc">서버는 클라이언트의 상태를 저장하지 않습니다. <strong style="color:var(--text)">각 요청은 처리에 필요한 모든 정보를 담아야</strong> 합니다. 세션 대신 JWT 토큰이 사용되는 이유입니다.</div><div class="p-example">Authorization: Bearer {JWT}<br>요청 자체가 완결성을 가져야 함</div></div>
+    <div class="principle"><div class="p-num">Constraint 03</div><div class="p-title">💾 캐시 가능 (Cacheable)</div><div class="p-desc">응답은 캐시 가능 여부를 명시해야 합니다. GET 응답은 캐시되어 성능을 향상시킵니다. Cache-Control, ETag 헤더를 활용합니다.</div><div class="p-example">Cache-Control: max-age=3600<br>ETag: "33a64df551"</div></div>
+    <div class="principle"><div class="p-num">Constraint 04</div><div class="p-title">🌐 균일한 인터페이스 (Uniform Interface)</div><div class="p-desc">REST의 핵심. URI로 자원을 식별하고 HTTP 메서드로 행위를 표현합니다. 자원과 행위를 분리하는 것이 핵심입니다.</div><div class="p-example">자원: /users/1<br>행위: GET(조회) DELETE(삭제)</div></div>
+    <div class="principle"><div class="p-num">Constraint 05</div><div class="p-title">🔗 계층형 시스템 (Layered System)</div><div class="p-desc">클라이언트는 직접 서버에 연결됐는지, 중간 서버(로드밸런서, CDN, API Gateway)에 연결됐는지 알 수 없습니다. 각 계층은 독립적입니다.</div><div class="p-example">Client → API GW → LB → Server<br>중간 계층이 투명하게 동작</div></div>
+    <div class="principle" style="border-left-color:var(--muted)"><div class="p-num" style="color:var(--muted)">Constraint 06 (선택)</div><div class="p-title">📦 코드 온 디맨드 (Code on Demand)</div><div class="p-desc">선택적 제약. 서버가 클라이언트에게 실행 가능한 코드(JavaScript)를 전달할 수 있습니다. 유일하게 선택적인 조건입니다.</div><div class="p-example" style="border-color:rgba(100,116,139,.2);color:var(--muted)">예: 서버에서 JS 코드를 응답으로 전달<br>(현대 웹에서는 잘 사용되지 않음)</div></div>
+  </div>
+</div>
+
+<div class="section s3">
+  <div class="sec-title"><div class="bar"></div>HTTP 메서드 &mdash; 행위를 표현하는 방법</div>
+  <div class="card">
+    <div class="method-tabs">
+      <button class="method-tab mt-get" onclick="showMethod('get')" id="tab-get">GET</button>
+      <button class="method-tab" onclick="showMethod('post')" id="tab-post">POST</button>
+      <button class="method-tab" onclick="showMethod('put')" id="tab-put">PUT</button>
+      <button class="method-tab" onclick="showMethod('patch')" id="tab-patch">PATCH</button>
+      <button class="method-tab" onclick="showMethod('del')" id="tab-del">DELETE</button>
+    </div>
+    <div class="method-panel active" id="panel-get">
+      <div class="method-header"><div class="method-badge" style="color:var(--get);border-color:var(--get);background:var(--getd)">GET</div><div class="method-info"><h3 style="color:var(--get)">자원 조회 (Read)</h3><p>서버에서 자원을 가져옵니다. 서버 상태를 변경하지 않습니다.</p></div></div>
+      <div class="method-props"><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 안전 (Safe)</span><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 멱등 (Idempotent)</span><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 캐시 가능</span><span class="prop-chip" style="border-color:var(--muted);color:var(--muted)">✗ 요청 Body 없음</span></div>
+      <div class="ex-row"><div><div class="code-box"><span class="c-cmt"># 목록 조회</span>
+<span class="c-get">GET</span> <span class="c-url">/api/users</span>
+<span class="c-hdr">Authorization:</span> <span class="c-str">Bearer {token}</span>
+
+<span class="c-cmt"># 단건 조회</span>
+<span class="c-get">GET</span> <span class="c-url">/api/users/42</span>
+
+<span class="c-cmt"># 쿼리 파라미터</span>
+<span class="c-get">GET</span> <span class="c-url">/api/users?page=1&amp;limit=20</span></div></div><div><div class="code-box"><span class="c-cmt"># 200 OK 응답</span>
+<span class="c-ok">200</span> OK
+{
+  <span class="c-key">"id"</span>: <span class="c-num">42</span>,
+  <span class="c-key">"name"</span>: <span class="c-str">"Kilian"</span>,
+  <span class="c-key">"email"</span>: <span class="c-str">"k@example.com"</span>
+}
+
+<span class="c-cmt"># 없을 경우</span>
+<span class="c-err">404</span> Not Found</div></div></div>
+    </div>
+    <div class="method-panel" id="panel-post">
+      <div class="method-header"><div class="method-badge" style="color:var(--post);border-color:var(--post);background:var(--postd)">POST</div><div class="method-info"><h3 style="color:var(--post)">자원 생성 (Create)</h3><p>새로운 자원을 생성합니다. 요청마다 새 자원이 만들어지므로 멱등하지 않습니다.</p></div></div>
+      <div class="method-props"><span class="prop-chip" style="border-color:var(--bad);color:var(--bad)">✗ 비안전 (Unsafe)</span><span class="prop-chip" style="border-color:var(--bad);color:var(--bad)">✗ 비멱등</span><span class="prop-chip" style="border-color:var(--muted);color:var(--muted)">✗ 캐시 불가</span><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 요청 Body 있음</span></div>
+      <div class="ex-row"><div><div class="code-box"><span class="c-cmt"># 새 유저 생성</span>
+<span class="c-post">POST</span> <span class="c-url">/api/users</span>
+<span class="c-hdr">Content-Type:</span> <span class="c-str">application/json</span>
+
+{
+  <span class="c-key">"name"</span>: <span class="c-str">"Kilian"</span>,
+  <span class="c-key">"email"</span>: <span class="c-str">"k@example.com"</span>
+}</div></div><div><div class="code-box"><span class="c-cmt"># 201 Created 응답</span>
+<span class="c-ok">201</span> Created
+<span class="c-hdr">Location:</span> <span class="c-url">/api/users/43</span>
+
+{
+  <span class="c-key">"id"</span>: <span class="c-num">43</span>,
+  <span class="c-key">"name"</span>: <span class="c-str">"Kilian"</span>,
+  <span class="c-key">"createdAt"</span>: <span class="c-str">"2024-01-15"</span>
+}</div></div></div>
+    </div>
+    <div class="method-panel" id="panel-put">
+      <div class="method-header"><div class="method-badge" style="color:var(--put);border-color:var(--put);background:var(--putd)">PUT</div><div class="method-info"><h3 style="color:var(--put)">자원 전체 수정 (Replace)</h3><p>자원 전체를 교체합니다. 같은 요청을 여러 번 보내도 결과가 같습니다(멱등).</p></div></div>
+      <div class="method-props"><span class="prop-chip" style="border-color:var(--bad);color:var(--bad)">✗ 비안전</span><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 멱등 (Idempotent)</span><span class="prop-chip" style="border-color:var(--muted);color:var(--muted)">✗ 캐시 불가</span><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 요청 Body 있음</span></div>
+      <div class="ex-row"><div><div class="code-box"><span class="c-cmt"># 유저 전체 교체 (모든 필드 필요)</span>
+<span class="c-put">PUT</span> <span class="c-url">/api/users/42</span>
+
+{
+  <span class="c-key">"name"</span>:  <span class="c-str">"Kilian Kim"</span>,
+  <span class="c-key">"email"</span>: <span class="c-str">"new@example.com"</span>,
+  <span class="c-key">"role"</span>:  <span class="c-str">"admin"</span>
+}
+<span class="c-cmt"># 누락 필드는 null이 됨!</span></div></div><div><div class="code-box"><span class="c-cmt"># 200 OK 응답</span>
+<span class="c-ok">200</span> OK
+{
+  <span class="c-key">"id"</span>:    <span class="c-num">42</span>,
+  <span class="c-key">"name"</span>:  <span class="c-str">"Kilian Kim"</span>,
+  <span class="c-key">"email"</span>: <span class="c-str">"new@example.com"</span>,
+  <span class="c-key">"role"</span>:  <span class="c-str">"admin"</span>
+}</div></div></div>
+    </div>
+    <div class="method-panel" id="panel-patch">
+      <div class="method-header"><div class="method-badge" style="color:var(--patch);border-color:var(--patch);background:var(--patchd)">PATCH</div><div class="method-info"><h3 style="color:var(--patch)">자원 부분 수정 (Partial Update)</h3><p>자원의 일부만 수정합니다. PUT과 달리 변경할 필드만 전송합니다.</p></div></div>
+      <div class="method-props"><span class="prop-chip" style="border-color:var(--bad);color:var(--bad)">✗ 비안전</span><span class="prop-chip" style="border-color:var(--warn);color:var(--warn)">△ 멱등 아닐 수 있음</span><span class="prop-chip" style="border-color:var(--muted);color:var(--muted)">✗ 캐시 불가</span><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 요청 Body 있음</span></div>
+      <div class="ex-row"><div><div class="code-box"><span class="c-cmt"># 이름만 수정 (부분 업데이트)</span>
+<span class="c-pat">PATCH</span> <span class="c-url">/api/users/42</span>
+
+{
+  <span class="c-key">"name"</span>: <span class="c-str">"Kilian Kim"</span>
+}
+<span class="c-cmt"># email, role 등은 그대로 유지됨</span></div></div><div><div class="code-box"><span class="c-cmt"># 200 OK 응답</span>
+<span class="c-ok">200</span> OK
+{
+  <span class="c-key">"id"</span>:    <span class="c-num">42</span>,
+  <span class="c-key">"name"</span>:  <span class="c-str">"Kilian Kim"</span>,
+  <span class="c-key">"email"</span>: <span class="c-str">"k@example.com"</span>
+}</div></div></div>
+    </div>
+    <div class="method-panel" id="panel-del">
+      <div class="method-header"><div class="method-badge" style="color:var(--del);border-color:var(--del);background:var(--deld)">DELETE</div><div class="method-info"><h3 style="color:var(--del)">자원 삭제 (Delete)</h3><p>자원을 삭제합니다. 같은 요청을 반복해도 결과가 같습니다(멱등).</p></div></div>
+      <div class="method-props"><span class="prop-chip" style="border-color:var(--bad);color:var(--bad)">✗ 비안전</span><span class="prop-chip" style="border-color:var(--good);color:var(--good)">✓ 멱등 (Idempotent)</span><span class="prop-chip" style="border-color:var(--muted);color:var(--muted)">✗ 캐시 불가</span><span class="prop-chip" style="border-color:var(--muted);color:var(--muted)">✗ 요청 Body 없음</span></div>
+      <div class="ex-row"><div><div class="code-box"><span class="c-cmt"># 유저 삭제</span>
+<span class="c-del">DELETE</span> <span class="c-url">/api/users/42</span>
+<span class="c-hdr">Authorization:</span> <span class="c-str">Bearer {token}</span>
+
+<span class="c-cmt"># 재요청해도 멱등</span>
+<span class="c-del">DELETE</span> <span class="c-url">/api/users/42</span>
+<span class="c-cmt"># 두 번째: 404 Not Found</span></div></div><div><div class="code-box"><span class="c-cmt"># 성공: 204 No Content</span>
+<span class="c-ok">204</span> No Content
+
+<span class="c-cmt"># 이미 삭제된 경우</span>
+<span class="c-err">404</span> Not Found
+
+<span class="c-cmt"># 권한 없는 경우</span>
+<span class="c-err">403</span> Forbidden</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section s4">
+  <div class="sec-title"><div class="bar"></div>URI 설계 원칙 &mdash; 자원을 표현하는 방법</div>
+  <div class="card">
+    <div class="dc-row">
+      <div class="dc-box dc-bad"><div class="dc-label">❌ Bad &mdash; 동사를 URI에 넣는 경우</div><span style="color:var(--bad)">/getUsers</span><br><span style="color:var(--bad)">/createPost</span><br><span style="color:var(--bad)">/deleteUser?id=1</span><br><span style="color:var(--bad)">/user_list</span></div>
+      <div class="dc-box dc-good"><div class="dc-label">✅ Good &mdash; 명사 + HTTP 메서드로 표현</div><span style="color:var(--good)">GET /users</span><br><span style="color:var(--good)">POST /posts</span><br><span style="color:var(--good)">DELETE /users/1</span><br><span style="color:var(--good)">GET /users</span></div>
+    </div>
+    <div class="uri-guide">
+      <div class="uri-row"><div class="uri-icon">1</div><div><div class="uri-good">✓ /users/{id}/posts</div><div class="uri-desc">소문자 명사, 계층 관계는 /로 표현</div></div><div><div class="uri-bad">✗ /Users/{id}/GetPosts</div><div class="uri-desc">대문자 금지, 동사 금지</div></div></div>
+      <div class="uri-row"><div class="uri-icon">2</div><div><div class="uri-good">✓ /users?page=1&amp;sort=name</div><div class="uri-desc">필터, 정렬, 페이지네이션은 쿼리 파라미터</div></div><div><div class="uri-bad">✗ /users/page/1/sort/name</div><div class="uri-desc">경로에 넣지 않는다</div></div></div>
+      <div class="uri-row"><div class="uri-icon">3</div><div><div class="uri-good">✓ /posts/123/comments</div><div class="uri-desc">복수형 명사, 관계는 중첩으로 표현</div></div><div><div class="uri-bad">✗ /post/123/comment</div><div class="uri-desc">단수형 명사 금지</div></div></div>
+      <div class="uri-row"><div class="uri-icon">4</div><div><div class="uri-good">✓ /api/v1/users</div><div class="uri-desc">버전은 URI 앞부분에 명시</div></div><div><div class="uri-bad">✗ /api/users/v1</div><div class="uri-desc">버전이 뒤에 오면 안 됨</div></div></div>
+      <div class="uri-row"><div class="uri-icon">5</div><div><div class="uri-good">✓ /users (끝에 / 없음)</div><div class="uri-desc">Trailing slash 사용 금지</div></div><div><div class="uri-bad">✗ /users/</div><div class="uri-desc">끝에 슬래시 붙이지 않기</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section s5">
+  <div class="sec-title"><div class="bar"></div>실전 API 설계 예시 &mdash; Users &amp; Posts</div>
+  <div class="playground">
+    <div class="pg-header"><div class="pg-dot" style="background:#f87171"></div><div class="pg-dot" style="background:#fbbf24"></div><div class="pg-dot" style="background:#4ade80"></div><div class="pg-title">REST API Playground &middot; api.example.com/v1</div></div>
+    <div class="pg-body">
+      <div class="pg-resource-tabs">
+        <button class="pg-rtab active" onclick="switchRes('users',this)">👤 /users</button>
+        <button class="pg-rtab" onclick="switchRes('posts',this)">📝 /posts</button>
+        <button class="pg-rtab" onclick="switchRes('comments',this)">💬 /posts/{id}/comments</button>
+      </div>
+      <div id="res-users">
+        <div class="pg-endpoints">
+          <div class="endpoint selected" onclick="selectEp(this,'epu1')"><div class="ep-method" style="background:var(--getd);color:var(--get);border:1px solid var(--get)">GET</div><div class="ep-url">/api/v1/users</div><div class="ep-desc">유저 목록 조회</div></div>
+          <div class="ep-detail open" id="epu1"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-get">GET</span> <span class="c-url">/api/v1/users?page=1&amp;limit=20</span>
+<span class="c-hdr">Authorization:</span> <span class="c-str">Bearer {token}</span></div></div><div><div class="ep-panel-title">Response 200</div><div class="code-box" style="font-size:11px">{
+  <span class="c-key">"data"</span>: [
+    {<span class="c-key">"id"</span>: <span class="c-num">1</span>, <span class="c-key">"name"</span>: <span class="c-str">"Alice"</span>},
+    {<span class="c-key">"id"</span>: <span class="c-num">2</span>, <span class="c-key">"name"</span>: <span class="c-str">"Bob"</span>}
+  ],
+  <span class="c-key">"meta"</span>: {<span class="c-key">"page"</span>: <span class="c-num">1</span>, <span class="c-key">"total"</span>: <span class="c-num">142</span>}
+}</div></div></div></div>
+          <div class="endpoint" onclick="selectEp(this,'epu2')"><div class="ep-method" style="background:var(--postd);color:var(--post);border:1px solid var(--post)">POST</div><div class="ep-url">/api/v1/users</div><div class="ep-desc">유저 생성</div></div>
+          <div class="ep-detail" id="epu2"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-post">POST</span> <span class="c-url">/api/v1/users</span>
+{
+  <span class="c-key">"name"</span>:  <span class="c-str">"Kilian"</span>,
+  <span class="c-key">"email"</span>: <span class="c-str">"k@example.com"</span>
+}</div></div><div><div class="ep-panel-title">Response 201</div><div class="code-box" style="font-size:11px"><span class="c-hdr">Location:</span> <span class="c-url">/api/v1/users/43</span>
+{<span class="c-key">"id"</span>: <span class="c-num">43</span>, <span class="c-key">"name"</span>: <span class="c-str">"Kilian"</span>}</div></div></div></div>
+          <div class="endpoint" onclick="selectEp(this,'epu3')"><div class="ep-method" style="background:var(--patchd);color:var(--patch);border:1px solid var(--patch)">PATCH</div><div class="ep-url">/api/v1/users/{id}</div><div class="ep-desc">유저 부분 수정</div></div>
+          <div class="ep-detail" id="epu3"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-pat">PATCH</span> <span class="c-url">/api/v1/users/42</span>
+{<span class="c-key">"name"</span>: <span class="c-str">"Kilian Kim"</span>}</div></div><div><div class="ep-panel-title">Response 200</div><div class="code-box" style="font-size:11px">{
+  <span class="c-key">"id"</span>: <span class="c-num">42</span>,
+  <span class="c-key">"name"</span>: <span class="c-str">"Kilian Kim"</span>,
+  <span class="c-key">"updatedAt"</span>: <span class="c-str">"2024-01-15"</span>
+}</div></div></div></div>
+          <div class="endpoint" onclick="selectEp(this,'epu4')"><div class="ep-method" style="background:var(--deld);color:var(--del);border:1px solid var(--del)">DELETE</div><div class="ep-url">/api/v1/users/{id}</div><div class="ep-desc">유저 삭제</div></div>
+          <div class="ep-detail" id="epu4"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-del">DELETE</span> <span class="c-url">/api/v1/users/42</span></div></div><div><div class="ep-panel-title">Response 204</div><div class="code-box" style="font-size:11px"><span class="c-ok">204</span> No Content
+<span class="c-cmt">(응답 Body 없음)</span></div></div></div></div>
+        </div>
+      </div>
+      <div id="res-posts" style="display:none">
+        <div class="pg-endpoints">
+          <div class="endpoint selected" onclick="selectEp(this,'epp1')"><div class="ep-method" style="background:var(--getd);color:var(--get);border:1px solid var(--get)">GET</div><div class="ep-url">/api/v1/posts</div><div class="ep-desc">게시글 목록</div></div>
+          <div class="ep-detail open" id="epp1"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-get">GET</span> <span class="c-url">/api/v1/posts?tag=tech&amp;sort=latest</span></div></div><div><div class="ep-panel-title">Response 200</div><div class="code-box" style="font-size:11px">{<span class="c-key">"data"</span>: [{<span class="c-key">"id"</span>: <span class="c-num">1</span>, <span class="c-key">"title"</span>: <span class="c-str">"REST API"</span>}]}</div></div></div></div>
+          <div class="endpoint" onclick="selectEp(this,'epp2')"><div class="ep-method" style="background:var(--postd);color:var(--post);border:1px solid var(--post)">POST</div><div class="ep-url">/api/v1/posts</div><div class="ep-desc">게시글 생성</div></div>
+          <div class="ep-detail" id="epp2"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-post">POST</span> <span class="c-url">/api/v1/posts</span>
+{<span class="c-key">"title"</span>: <span class="c-str">"REST API 정복"</span>, <span class="c-key">"content"</span>: <span class="c-str">"..."</span>}</div></div><div><div class="ep-panel-title">Response 201</div><div class="code-box" style="font-size:11px"><span class="c-ok">201</span> Created
+<span class="c-hdr">Location:</span> <span class="c-url">/api/v1/posts/10</span></div></div></div></div>
+        </div>
+      </div>
+      <div id="res-comments" style="display:none">
+        <div class="pg-endpoints">
+          <div class="endpoint selected" onclick="selectEp(this,'epc1')"><div class="ep-method" style="background:var(--getd);color:var(--get);border:1px solid var(--get)">GET</div><div class="ep-url">/api/v1/posts/{postId}/comments</div><div class="ep-desc">댓글 목록</div></div>
+          <div class="ep-detail open" id="epc1"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-get">GET</span> <span class="c-url">/api/v1/posts/10/comments</span>
+<span class="c-cmt"># 중첩 URI로 관계 표현</span></div></div><div><div class="ep-panel-title">Response 200</div><div class="code-box" style="font-size:11px">{<span class="c-key">"data"</span>: [
+  {<span class="c-key">"id"</span>: <span class="c-num">1</span>, <span class="c-key">"body"</span>: <span class="c-str">"좋아요!"</span>, <span class="c-key">"userId"</span>: <span class="c-num">42</span>}
+]}</div></div></div></div>
+          <div class="endpoint" onclick="selectEp(this,'epc2')"><div class="ep-method" style="background:var(--postd);color:var(--post);border:1px solid var(--post)">POST</div><div class="ep-url">/api/v1/posts/{postId}/comments</div><div class="ep-desc">댓글 작성</div></div>
+          <div class="ep-detail" id="epc2"><div class="ep-grid"><div><div class="ep-panel-title">Request</div><div class="code-box" style="font-size:11px"><span class="c-post">POST</span> <span class="c-url">/api/v1/posts/10/comments</span>
+{<span class="c-key">"body"</span>: <span class="c-str">"좋은 글이에요!"</span>}</div></div><div><div class="ep-panel-title">Response 201</div><div class="code-box" style="font-size:11px"><span class="c-ok">201</span> Created
+{<span class="c-key">"id"</span>: <span class="c-num">55</span>, <span class="c-key">"postId"</span>: <span class="c-num">10</span>}</div></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section s6">
+  <div class="sec-title"><div class="bar"></div>HTTP 상태 코드 &mdash; 응답을 명확하게</div>
+  <div class="status-groups">
+    <div><div class="sg-title" style="background:rgba(6,182,212,0.1);color:var(--get)">2xx 성공</div><div class="status-codes"><div class="status-card"><div class="sc-code" style="color:var(--good)">200</div><div class="sc-info"><h4>OK</h4><p>요청 성공. GET, PUT, PATCH에 사용</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--good)">201</div><div class="sc-info"><h4>Created</h4><p>자원 생성 성공. POST 후 Location 헤더와 함께</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--good)">204</div><div class="sc-info"><h4>No Content</h4><p>성공하였으나 응답 Body 없음. DELETE에 사용</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--good)">206</div><div class="sc-info"><h4>Partial Content</h4><p>Range 요청의 부분 응답. 스트리밍에 사용</p></div></div></div></div>
+    <div><div class="sg-title" style="background:rgba(251,191,36,0.1);color:#fbbf24">3xx 리다이렉션</div><div class="status-codes"><div class="status-card"><div class="sc-code" style="color:#fbbf24">301</div><div class="sc-info"><h4>Moved Permanently</h4><p>URI가 영구 변경됨. 새 URI로 리다이렉트</p></div></div><div class="status-card"><div class="sc-code" style="color:#fbbf24">304</div><div class="sc-info"><h4>Not Modified</h4><p>캐시 유효. 데이터 재전송 불필요 (ETag 활용)</p></div></div></div></div>
+    <div><div class="sg-title" style="background:rgba(251,146,60,0.1);color:var(--warn)">4xx 클라이언트 오류</div><div class="status-codes"><div class="status-card"><div class="sc-code" style="color:var(--warn)">400</div><div class="sc-info"><h4>Bad Request</h4><p>잘못된 요청 형식 또는 유효성 검사 실패</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--warn)">401</div><div class="sc-info"><h4>Unauthorized</h4><p>인증 필요 &mdash; 로그인하지 않은 상태</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--warn)">403</div><div class="sc-info"><h4>Forbidden</h4><p>인증됐지만 권한 없음 (401과 구분 중요!)</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--warn)">404</div><div class="sc-info"><h4>Not Found</h4><p>자원이 존재하지 않음</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--warn)">405</div><div class="sc-info"><h4>Method Not Allowed</h4><p>해당 URI에서 지원하지 않는 메서드</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--warn)">409</div><div class="sc-info"><h4>Conflict</h4><p>중복 데이터 등 충돌. 이메일 중복 등에 사용</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--warn)">422</div><div class="sc-info"><h4>Unprocessable Entity</h4><p>형식은 맞지만 비즈니스 유효성 실패</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--warn)">429</div><div class="sc-info"><h4>Too Many Requests</h4><p>Rate Limit 초과. API 요청 제한에 사용</p></div></div></div></div>
+    <div><div class="sg-title" style="background:rgba(248,113,113,0.1);color:var(--bad)">5xx 서버 오류</div><div class="status-codes"><div class="status-card"><div class="sc-code" style="color:var(--bad)">500</div><div class="sc-info"><h4>Internal Server Error</h4><p>서버 내부 오류. 가능하면 구체적인 코드 사용 권장</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--bad)">502</div><div class="sc-info"><h4>Bad Gateway</h4><p>게이트웨이가 업스트림에서 잘못된 응답 수신</p></div></div><div class="status-card"><div class="sc-code" style="color:var(--bad)">503</div><div class="sc-info"><h4>Service Unavailable</h4><p>서버 과부하 또는 점검 중. Retry-After 헤더 활용</p></div></div></div></div>
+  </div>
+</div>
+
+<div class="section s6">
+  <div class="sec-title"><div class="bar"></div>멱등성(Idempotent)과 안전성(Safe)</div>
+  <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--border)">
+    <table class="cmp-table">
+      <thead><tr><th>메서드</th><th>안전 (Safe)</th><th>멱등 (Idempotent)</th><th>캐시 가능</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td style="color:var(--get);font-family:var(--mono);font-weight:700">GET</td><td class="good">✓</td><td class="good">✓</td><td class="good">✓</td><td style="color:var(--dim);font-size:12px">서버 상태 변경 없음, 반복 호출 결과 동일, 캐싱 가능</td></tr>
+        <tr><td style="color:var(--post);font-family:var(--mono);font-weight:700">POST</td><td class="bad">✗</td><td class="bad">✗</td><td class="bad">✗</td><td style="color:var(--dim);font-size:12px">매번 새 자원 생성 → 중복 생성 주의</td></tr>
+        <tr><td style="color:var(--put);font-family:var(--mono);font-weight:700">PUT</td><td class="bad">✗</td><td class="good">✓</td><td class="bad">✗</td><td style="color:var(--dim);font-size:12px">전체 교체, 반복 호출해도 결과 동일</td></tr>
+        <tr><td style="color:var(--patch);font-family:var(--mono);font-weight:700">PATCH</td><td class="bad">✗</td><td style="color:#fbbf24">△</td><td class="bad">✗</td><td style="color:var(--dim);font-size:12px">구현에 따라 멱등 여부가 달라질 수 있음</td></tr>
+        <tr><td style="color:var(--del);font-family:var(--mono);font-weight:700">DELETE</td><td class="bad">✗</td><td class="good">✓</td><td class="bad">✗</td><td style="color:var(--dim);font-size:12px">이미 삭제된 자원 재삭제 시 404 반환</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:12px;padding:14px 18px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.2);border-radius:10px;font-size:13px;color:var(--dim);line-height:1.8">
+    💡 <strong style="color:var(--rest)">안전(Safe)</strong>: 호출이 서버 상태를 변경하지 않음 &middot; <strong style="color:var(--rest)">멱등(Idempotent)</strong>: 동일 요청을 여러 번 보내도 결과가 항상 같음. 재시도 로직 설계 시 멱등성이 핵심입니다.
+  </div>
+</div>
+
+<div class="section s7">
+  <div class="sec-title"><div class="bar"></div>🎯 면접 핵심 포인트</div>
+  <div class="tips-grid">
+    <div class="tip-card"><div class="ti">🔄</div><div class="tt">Stateless가 왜 중요한가?</div><div class="td">서버가 클라이언트 상태를 저장하지 않아 스케일 아웃이 쉽습니다. 어느 서버로 요청이 가도 동일하게 처리되어 로드밸런서 뒤에 서버를 수평 확장할 수 있습니다.</div></div>
+    <div class="tip-card"><div class="ti">🔢</div><div class="tt">401 vs 403 차이</div><div class="td"><strong style="color:#fbbf24">401 Unauthorized</strong>: 인증되지 않음 (로그인 필요). <strong style="color:var(--bad)">403 Forbidden</strong>: 인증은 됐지만 권한이 없음. 면접에서 자주 헷갈리는 포인트입니다.</div></div>
+    <div class="tip-card"><div class="ti">♻️</div><div class="tt">PUT vs PATCH</div><div class="td"><strong style="color:var(--put)">PUT</strong>은 자원 전체를 교체합니다. 누락 필드는 null이 됩니다. <strong style="color:var(--patch)">PATCH</strong>는 보낸 필드만 수정합니다. 실무에서는 PATCH를 더 많이 사용합니다.</div></div>
+    <div class="tip-card"><div class="ti">🌐</div><div class="tt">REST vs RESTful</div><div class="td">REST는 아키텍처 스타일(제약 조건의 집합)이고, RESTful은 그 조건을 충족한 구현을 말합니다. 많은 API가 REST스럽지만 완전한 RESTful은 아닙니다 (HATEOAS 미준수 등).</div></div>
+    <div class="tip-card"><div class="ti">🔗</div><div class="tt">HATEOAS란?</div><div class="td">Hypermedia As The Engine Of Application State. 응답에 관련 링크를 포함시켜 클라이언트가 다음 액션을 서버가 안내합니다. 완전한 REST의 조건이지만 실무에서 잘 구현되지 않습니다.</div></div>
+    <div class="tip-card"><div class="ti">🆚</div><div class="tt">REST vs GraphQL</div><div class="td">REST는 자원 중심 고정 엔드포인트. GraphQL은 단일 엔드포인트에서 원하는 데이터만 쿼리로 요청합니다. Over-fetching/Under-fetching 문제를 GraphQL이 해결하지만, REST가 단순하고 캐싱이 유리합니다.</div></div>
+  </div>
+</div>
+
+</div>
+<script>
+function showMethod(m){
+  document.querySelectorAll('.method-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.method-tab').forEach(function(t){t.className='method-tab';});
+  document.getElementById('panel-'+m).classList.add('active');
+  var cls={get:'mt-get',post:'mt-post',put:'mt-put',patch:'mt-patch',del:'mt-del'};
+  document.getElementById('tab-'+m).classList.add(cls[m]);
+}
+function switchRes(res,btn){
+  ['users','posts','comments'].forEach(function(r){
+    var el=document.getElementById('res-'+r);
+    if(el)el.style.display=(r===res)?'block':'none';
+  });
+  document.querySelectorAll('.pg-rtab').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+}
+function selectEp(el,detailId){
+  var container=el.parentElement;
+  container.querySelectorAll('.endpoint').forEach(function(e){e.classList.remove('selected');});
+  container.querySelectorAll('.ep-detail').forEach(function(d){d.classList.remove('open');});
+  el.classList.add('selected');
+  var d=document.getElementById(detailId);
+  if(d)d.classList.add('open');
+}
+</script>
+</body>
+</html>
