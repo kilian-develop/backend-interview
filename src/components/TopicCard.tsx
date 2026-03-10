@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import type { Topic } from '../data/categories'
+import { prefetchPage } from '../lib/prefetch'
 
 interface TopicCardProps {
   topic: Topic
@@ -37,6 +38,7 @@ export default function TopicCard({
         transition: 'transform .25s, box-shadow .25s, border-color .25s',
       }}
       onMouseEnter={(e) => {
+        prefetchPage(topic.slug)
         const el = e.currentTarget
         el.style.transform = 'translateY(-4px)'
         el.style.boxShadow = `0 0 32px ${glow}, 0 8px 24px rgba(0,0,0,.5)`
