@@ -143,22 +143,38 @@ export default function TableOfContents({ accentColor, activeTab }: Props) {
 
   useInjectCSS('style-toc', CSS)
 
-  // Re-scan sections when tab changes
+  // Re-scan sections when tab changes, using MutationObserver for reliability
   useEffect(() => {
     setIsOpen(false)
     setItems([])
     setActiveId('')
 
-    const timer = setTimeout(() => {
+    const scan = () => {
       const els = document.querySelectorAll('.doc-sec-title[id]')
       const next: TocItem[] = []
       els.forEach((el) => {
         if (el.id) next.push({ id: el.id, text: el.textContent?.trim() || '' })
       })
-      setItems(next)
-    }, 500)
+      if (next.length > 0) setItems(next)
+      return next.length > 0
+    }
 
-    return () => clearTimeout(timer)
+    // 이미 렌더링된 경우 즉시 반영
+    if (scan()) return
+
+    // lazy 로딩 대기: DOM 변경 감지
+    const observer = new MutationObserver(() => {
+      if (scan()) observer.disconnect()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+
+    // 안전장치: 10초 후 옵저버 정리
+    const timeout = setTimeout(() => observer.disconnect(), 10_000)
+
+    return () => {
+      observer.disconnect()
+      clearTimeout(timeout)
+    }
   }, [activeTab])
 
   // Scroll spy
