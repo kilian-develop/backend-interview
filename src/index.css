@@ -32,3 +32,30 @@ body {
 input::placeholder {
   color: var(--muted);
 }
+
+/* 모바일 반응형 */
+@media (max-width: 480px) {
+  .stats-row .stats-divider {
+    display: none;
+  }
+
+  .stats-row {
+    gap: 16px !important;
+  }
+
+  .category-filter {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .category-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-filter button {
+    flex-shrink: 0;
+  }
+}

@@ -10,6 +10,20 @@ const TAB_CSS = `
 .page-tab:hover { border-color:rgba(59,130,246,0.3); background:rgba(59,130,246,0.05); }
 .page-tab.active { border-color:rgba(59,130,246,0.5); background:rgba(59,130,246,0.1); color:#3b82f6; }
 .page-tab-icon { font-size:13px; }
+
+@media (max-width:480px) {
+  .tab-groups { padding:8px 10px 0; gap:6px; }
+  .tab-group { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:4px; padding-bottom:4px; }
+  .tab-group::-webkit-scrollbar { display:none; }
+  .tab-group-label { min-width:40px; font-size:9px; letter-spacing:0.3px; }
+  .page-tab { padding:5px 8px; font-size:10px; gap:4px; }
+  .page-tab-icon { font-size:11px; }
+}
+@media (min-width:481px) and (max-width:640px) {
+  .tab-groups { padding:10px 14px 0; }
+  .page-tab { padding:5px 10px; font-size:10px; }
+  .page-tab-icon { font-size:12px; }
+}
 `
 
 const sections: Record<string, React.LazyExoticComponent<React.ComponentType>> = {

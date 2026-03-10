@@ -68,7 +68,7 @@ export default function HomePage() {
           zIndex: 1,
           maxWidth: '1080px',
           margin: '0 auto',
-          padding: '60px 22px 100px',
+          padding: 'clamp(32px, 8vw, 60px) clamp(14px, 4vw, 22px) 100px',
         }}
       >
         {/* Hero */}
@@ -125,7 +125,7 @@ export default function HomePage() {
         <SearchBar onSearch={setQuery} />
 
         {/* 카테고리 필터 */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
+        <div className="category-filter" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
           <button
             onClick={() => setActiveCategory(null)}
             style={{
@@ -166,12 +166,12 @@ export default function HomePage() {
         </div>
 
         {/* 요약 통계 */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', marginBottom: '56px' }}>
+        <div className="stats-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', marginBottom: '56px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span
               style={{
                 fontFamily: 'var(--mono)',
-                fontSize: '26px',
+                fontSize: 'clamp(18px, 4vw, 26px)',
                 fontWeight: 700,
                 color: '#3b82f6',
               }}
@@ -182,12 +182,12 @@ export default function HomePage() {
               전체 주제
             </span>
           </div>
-          <div style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border)' }} />
+          <div className="stats-divider" style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border)' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span
               style={{
                 fontFamily: 'var(--mono)',
-                fontSize: '26px',
+                fontSize: 'clamp(18px, 4vw, 26px)',
                 fontWeight: 700,
                 color: '#22c55e',
               }}
@@ -201,6 +201,7 @@ export default function HomePage() {
           {CATEGORIES.map((cat, i) => (
             <div key={cat.id} style={{ display: 'contents' }}>
               <div
+                className="stats-divider"
                 style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border)' }}
               />
               <div
@@ -214,7 +215,7 @@ export default function HomePage() {
                 <span
                   style={{
                     fontFamily: 'var(--mono)',
-                    fontSize: '26px',
+                    fontSize: 'clamp(18px, 4vw, 26px)',
                     fontWeight: 700,
                     color: cat.color,
                   }}
@@ -260,8 +261,9 @@ export default function HomePage() {
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
+            justifyContent: 'center',
+            gap: '8px 16px',
+            textAlign: 'center',
           }}
         >
           <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--muted)' }}>
