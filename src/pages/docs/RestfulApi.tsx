@@ -2,6 +2,7 @@ import HeroSection from '../../components/doc/HeroSection'
 import SectionTitle from '../../components/doc/SectionTitle'
 import HighlightBox from '../../components/doc/HighlightBox'
 import InterviewQuestions from '../../components/doc/InterviewQuestions'
+import { CodeBlock } from '../../components/doc/CodeBlock'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 
 const CSS = `
@@ -199,19 +200,17 @@ export default function RestfulApi() {
           </div>
           <div className="ra-resp-grid">
             <div>
-              <span className="ra-code-label" style={{ background:'rgba(59,130,246,.1)', border:'1px solid rgba(59,130,246,.3)', color:'#3b82f6' }}>요청 예시</span>
-              <div className="ra-code-block">{`GET /api/users/1 HTTP/1.1
+              <CodeBlock title="요청 예시" lang="HTTP">{`GET /api/users/1 HTTP/1.1
 Accept: application/json
 Accept-Language: ko-KR
-Accept-Encoding: gzip, br`}</div>
+Accept-Encoding: gzip, br`}</CodeBlock>
             </div>
             <div>
-              <span className="ra-code-label" style={{ background:'rgba(34,197,94,.1)', border:'1px solid rgba(34,197,94,.3)', color:'#22c55e' }}>응답 예시</span>
-              <div className="ra-code-block">{`HTTP/1.1 200 OK
+              <CodeBlock title="응답 예시" lang="HTTP">{`HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
 Content-Language: ko-KR
 Content-Encoding: gzip
-Vary: Accept, Accept-Language, Accept-Encoding`}</div>
+Vary: Accept, Accept-Language, Accept-Encoding`}</CodeBlock>
             </div>
           </div>
           <HighlightBox color="#3b82f6" style={{ marginTop:'16px' }}>
@@ -267,8 +266,7 @@ Vary: Accept, Accept-Language, Accept-Encoding`}</div>
             ))}
           </div>
           <div style={{ marginTop:'20px' }}>
-            <span className="ra-code-label" style={{ background:'rgba(34,197,94,.1)', border:'1px solid rgba(34,197,94,.3)', color:'#22c55e' }}>Level 3 — HATEOAS 응답 예시</span>
-            <div className="ra-code-block">{`{
+            <CodeBlock title="Level 3 — HATEOAS 응답 예시" lang="JSON">{`{
   "id": 1,
   "name": "홍길동",
   "email": "hong@example.com",
@@ -280,7 +278,7 @@ Vary: Accept, Accept-Language, Accept-Encoding`}</div>
     "orders": { "href": "/api/users/1/orders", "method": "GET" },
     "deactivate": { "href": "/api/users/1/deactivate", "method": "POST" }
   }
-}`}</div>
+}`}</CodeBlock>
             <p style={{ fontSize:'12px', color:'#5a6a85', lineHeight:'1.75', marginTop:'10px' }}>
               HATEOAS(Hypermedia As The Engine Of Application State)는 응답에 <code style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'11px', background:'rgba(34,197,94,.1)', color:'#22c55e', padding:'1px 5px', borderRadius:'3px' }}>_links</code> 필드로 클라이언트가 수행할 수 있는 다음 행위를 명시합니다. 클라이언트는 URI를 하드코딩하지 않고 서버가 제공하는 링크를 따라가므로 서버 API 변경에 유연하게 대응할 수 있습니다. 다만 실무에서는 프론트엔드와 백엔드가 긴밀히 협력하는 환경에서 오버엔지니어링으로 여겨지는 경우가 많고, 클라이언트 구현 복잡도가 증가하여 채택률이 낮습니다.
             </p>
@@ -371,15 +369,14 @@ Vary: Accept, Accept-Language, Accept-Encoding`}</div>
           </div>
 
           <div style={{ marginTop:'20px' }}>
-            <span className="ra-code-label" style={{ background:'rgba(34,197,94,.1)', border:'1px solid rgba(34,197,94,.3)', color:'#22c55e' }}>Cursor 기반 응답 예시</span>
-            <div className="ra-code-block">{`{
+            <CodeBlock title="Cursor 기반 응답 예시" lang="JSON">{`{
   "data": [...],
   "pagination": {
     "next_cursor": "eyJpZCI6MTAwfQ==",
     "has_next": true,
     "total_count": 1234
   }
-}`}</div>
+}`}</CodeBlock>
           </div>
 
           <h3 style={{ fontSize:'16px', fontWeight:700, color:'#06b6d4', marginTop:'32px', marginBottom:'14px' }}>필터링 / 정렬 / 검색 패턴</h3>
@@ -437,8 +434,7 @@ Vary: Accept, Accept-Language, Accept-Encoding`}</div>
               </div>
             </div>
             <div>
-              <span className="ra-code-label" style={{ background:'rgba(239,68,68,.1)', border:'1px solid rgba(239,68,68,.3)', color:'#ef4444' }}>표준 에러 응답 예시</span>
-              <div className="ra-code-block">{`{
+              <CodeBlock title="표준 에러 응답 예시" lang="JSON">{`{
   "status": 400,
   "code": "INVALID_PARAMETER",
   "message": "이메일 형식이 올바르지 않습니다.",
@@ -450,7 +446,7 @@ Vary: Accept, Accept-Language, Accept-Encoding`}</div>
     }
   ],
   "timestamp": "2024-03-06T12:00:00Z"
-}`}</div>
+}`}</CodeBlock>
             </div>
           </div>
           <HighlightBox color="#ef4444" style={{ marginTop:'16px' }}>
@@ -498,8 +494,7 @@ Vary: Accept, Accept-Language, Accept-Encoding`}</div>
               </div>
             </div>
             <div>
-              <span className="ra-code-label" style={{ background:'rgba(239,68,68,.1)', border:'1px solid rgba(239,68,68,.3)', color:'#ef4444' }}>429 Too Many Requests 응답 예시</span>
-              <div className="ra-code-block">{`HTTP/1.1 429 Too Many Requests
+              <CodeBlock title="429 Too Many Requests 응답 예시" lang="HTTP">{`HTTP/1.1 429 Too Many Requests
 Content-Type: application/json
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 0
@@ -511,7 +506,7 @@ Retry-After: 30
   "code": "RATE_LIMIT_EXCEEDED",
   "message": "요청 한도를 초과했습니다. 30초 후 재시도해주세요.",
   "timestamp": "2024-03-06T12:00:00Z"
-}`}</div>
+}`}</CodeBlock>
             </div>
           </div>
           <HighlightBox color="#a855f7" style={{ marginTop:'16px' }}>

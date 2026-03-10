@@ -4,6 +4,7 @@ import SectionTitle from '../../components/doc/SectionTitle'
 import AnimationControls from '../../components/doc/AnimationControls'
 import HighlightBox from '../../components/doc/HighlightBox'
 import InterviewQuestions from '../../components/doc/InterviewQuestions'
+import { CodeBlock } from '../../components/doc/CodeBlock'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 import { useAnimationTimeline } from '../../hooks/useAnimationTimeline'
 
@@ -175,8 +176,7 @@ export default function GrpcProtobuf() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
             <div>
-              <span className="grpc-code-label" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}>.proto 파일 정의</span>
-              <div className="grpc-code">{`syntax = "proto3";
+              <CodeBlock title=".proto 파일 정의" lang="Proto">{`syntax = "proto3";
 
 package user;
 
@@ -202,11 +202,10 @@ service UserService {
     returns (stream User);
   rpc CreateUser (CreateUserRequest)
     returns (User);
-}`}</div>
+}`}</CodeBlock>
             </div>
             <div>
-              <span className="grpc-code-label" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#3b82f6' }}>JSON과 크기 비교</span>
-              <div className="grpc-code">{`// JSON (텍스트) — 82 bytes
+              <CodeBlock title="JSON과 크기 비교" lang="Comparison">{`// JSON (텍스트) — 82 bytes
 {
   "id": 12345,
   "name": "홍길동",
@@ -221,7 +220,7 @@ service UserService {
 // 6D 70 6C 65 2E 63 6F 6D
 // 20 01
 
-// → 약 57% 크기 절감`}</div>
+// → 약 57% 크기 절감`}</CodeBlock>
             </div>
           </div>
           <div className="grpc-feature-grid">

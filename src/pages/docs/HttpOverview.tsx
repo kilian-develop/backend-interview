@@ -3,9 +3,11 @@ import HeroSection from '../../components/doc/HeroSection'
 import SectionTitle from '../../components/doc/SectionTitle'
 import HighlightBox from '../../components/doc/HighlightBox'
 import InterviewQuestions from '../../components/doc/InterviewQuestions'
+import { CodeBlock } from '../../components/doc/CodeBlock'
 import AnimationControls from '../../components/doc/AnimationControls'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 import { useAnimationTimeline } from '../../hooks/useAnimationTimeline'
+import { DiagramContainer, DiagramNode, DiagramArrow, DiagramFlow, DiagramGrid } from '../../components/doc/Diagram'
 
 const CSS = `
 .ho-char-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
@@ -144,25 +146,37 @@ export default function HttpOverview() {
               </div>
             </div>
 
-            <div style={{ margin: '16px 0 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`OSI 7계층에서 HTTP의 위치:
-
-  ┌──────────────────────────────┐
-  │  7. Application Layer        │ ← HTTP, HTTPS, FTP, DNS, SMTP
-  │  6. Presentation Layer       │
-  │  5. Session Layer            │
-  ├──────────────────────────────┤
-  │  4. Transport Layer          │ ← TCP, UDP
-  │  3. Network Layer            │ ← IP
-  │  2. Data Link Layer          │ ← Ethernet, Wi-Fi
-  │  1. Physical Layer           │ ← 전기 신호, 광 신호
-  └──────────────────────────────┘
-
-TCP/IP 4계층:
-  Application  ← HTTP
-  Transport    ← TCP (HTTP/1.x, 2) / UDP+QUIC (HTTP/3)
-  Internet     ← IP
-  Network Access`}
+            <div style={{ margin: '16px 0 0' }}>
+              <DiagramGrid cols={2}>
+                <DiagramContainer title="OSI 7계층">
+                  <DiagramFlow vertical>
+                    <DiagramNode label="7. Application" color="#3b82f6" sub="HTTP, HTTPS, FTP, DNS, SMTP" style={{ borderWidth: '2px' }} />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="6. Presentation" color="#3b82f6" />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="5. Session" color="#3b82f6" />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="4. Transport" color="#3b82f6" sub="TCP, UDP" />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="3. Network" color="#3b82f6" sub="IP" />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="2. Data Link" color="#3b82f6" sub="Ethernet, Wi-Fi" />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="1. Physical" color="#3b82f6" sub="전기 신호, 광 신호" />
+                  </DiagramFlow>
+                </DiagramContainer>
+                <DiagramContainer title="TCP/IP 4계층">
+                  <DiagramFlow vertical>
+                    <DiagramNode label="Application" color="#3b82f6" sub="HTTP" style={{ borderWidth: '2px' }} />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="Transport" color="#3b82f6" sub="TCP / UDP+QUIC" />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="Internet" color="#3b82f6" sub="IP" />
+                    <DiagramArrow vertical color="#3b82f6" />
+                    <DiagramNode label="Network Access" color="#3b82f6" />
+                  </DiagramFlow>
+                </DiagramContainer>
+              </DiagramGrid>
             </div>
           </div>
         </div>
@@ -225,20 +239,26 @@ TCP/IP 4계층:
           </div>
 
           {/* Stateless vs Stateful */}
-          <div style={{ marginTop: '20px', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`Stateless vs Stateful 비교:
-
-  Stateful (TCP 등):
-    요청1: "로그인할게요"  → 서버: "OK, 기억해둘게요"
-    요청2: "마이페이지"    → 서버: "아, 김철수님이군요!" ← 상태 기억
-
-  Stateless (HTTP):
-    요청1: "로그인할게요"  → 서버: "OK, 토큰 줄게요"
-    요청2: "마이페이지"    → 서버: "누구세요?" ← 상태 없음!
-    요청3: "마이페이지 + 토큰" → 서버: "토큰 확인! 김철수님!" ← 토큰으로 보완
-
-  → Stateless 장점: 서버 A, B, C 중 어느 서버가 처리해도 동일한 결과
-  → 스케일 아웃(서버 증설)이 매우 용이`}
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ padding: '16px', background: '#080b11', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#a855f7', marginBottom: '10px', fontFamily: 'var(--mono)' }}>Stateful (TCP 등)</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', lineHeight: 1.6 }}>
+                <div style={{ color: '#94a3b8' }}><span style={{ color: '#cbd5e1' }}>요청1:</span> "로그인할게요" → 서버: <strong style={{ color: '#a855f7' }}>"OK, 기억해둘게요"</strong></div>
+                <div style={{ color: '#94a3b8' }}><span style={{ color: '#cbd5e1' }}>요청2:</span> "마이페이지" → 서버: <strong style={{ color: '#a855f7' }}>"아, 김철수님이군요!"</strong> ← 상태 기억</div>
+              </div>
+            </div>
+            <div style={{ padding: '16px', background: '#080b11', border: '1px solid rgba(6,182,212,0.3)', borderRadius: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#06b6d4', marginBottom: '10px', fontFamily: 'var(--mono)' }}>Stateless (HTTP)</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', lineHeight: 1.6 }}>
+                <div style={{ color: '#94a3b8' }}><span style={{ color: '#cbd5e1' }}>요청1:</span> "로그인할게요" → 서버: "OK, 토큰 줄게요"</div>
+                <div style={{ color: '#94a3b8' }}><span style={{ color: '#cbd5e1' }}>요청2:</span> "마이페이지" → 서버: <strong style={{ color: '#ef4444' }}>"누구세요?"</strong> ← 상태 없음!</div>
+                <div style={{ color: '#94a3b8' }}><span style={{ color: '#cbd5e1' }}>요청3:</span> "마이페이지 + 토큰" → 서버: <strong style={{ color: '#22c55e' }}>"토큰 확인! 김철수님!"</strong></div>
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: '10px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', padding: '6px 12px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '6px' }}>✅ 서버 A, B, C 중 어느 서버가 처리해도 동일한 결과</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', padding: '6px 12px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '6px' }}>✅ 스케일 아웃(서버 증설)이 매우 용이</div>
           </div>
         </div>
 
@@ -378,20 +398,21 @@ TCP/IP 4계층:
                 <span>구현에 따라 다름. "나이를 +1" 연산이면 10번 = +10 → <strong style={{ color: '#ef4444' }}>멱등 X</strong></span>
               </div>
 
-              <div style={{ margin: '16px 0 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`멱등성의 실무적 중요성:
-
-  네트워크 타임아웃 발생 시:
-    Client ── PUT /users/1 ──→ Server  (응답이 돌아오지 않음)
-                    ↑
-           "성공했는지 실패했는지 모른다"
-
-  멱등한 요청 (PUT):
-    → 그냥 다시 보내면 됨. 결과가 동일하므로 안전.
-
-  멱등하지 않은 요청 (POST):
-    → 다시 보내면 중복 생성 위험!
-    → 별도의 중복 방지 메커니즘 필요 (Idempotency Key 등)`}
+              <div style={{ margin: '16px 0 0', padding: '16px 18px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '10px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#e2e8f0', marginBottom: '10px', fontFamily: 'var(--mono)' }}>멱등성의 실무적 중요성</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.7, marginBottom: '12px', padding: '8px 12px', background: '#0f172a', borderRadius: '6px', borderLeft: '3px solid #f59e0b' }}>
+                  네트워크 타임아웃 발생 시: <code style={{ color: '#3b82f6', fontFamily: 'var(--mono)', fontSize: '11px' }}>PUT /users/1</code> 요청 후 응답이 오지 않음 → <strong style={{ color: '#f59e0b' }}>"성공? 실패? 알 수 없다"</strong>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ padding: '12px', background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#22c55e', marginBottom: '6px', fontFamily: 'var(--mono)' }}>멱등한 요청 (PUT)</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.6 }}>그냥 다시 보내면 됨. 결과가 동일하므로 <strong style={{ color: '#22c55e' }}>안전</strong>.</div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', marginBottom: '6px', fontFamily: 'var(--mono)' }}>멱등하지 않은 요청 (POST)</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.6 }}>다시 보내면 <strong style={{ color: '#ef4444' }}>중복 생성 위험!</strong><br />별도의 중복 방지 메커니즘 필요 (Idempotency Key 등)</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -663,25 +684,23 @@ TCP/IP 4계층:
             <div style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.8, marginBottom: '14px' }}>
               클라이언트와 서버가 <strong style={{ color: '#e2e8f0' }}>Accept / Content-Type</strong> 헤더를 통해 데이터 형식을 협상합니다.
             </div>
-            <div style={{ margin: '0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`클라이언트가 JSON을 원하는 경우:
+            <CodeBlock title="클라이언트가 JSON을 원하는 경우" lang="HTTP">
+{`요청:
+  GET /api/users HTTP/1.1
+  Accept: application/json         ← "JSON으로 보내주세요"
+  Accept-Language: ko              ← "한국어로 보내주세요"
+  Accept-Encoding: gzip, br        ← "gzip 또는 brotli 압축 가능"
 
-  요청:
-    GET /api/users HTTP/1.1
-    Accept: application/json         ← "JSON으로 보내주세요"
-    Accept-Language: ko              ← "한국어로 보내주세요"
-    Accept-Encoding: gzip, br        ← "gzip 또는 brotli 압축 가능"
+응답:
+  HTTP/1.1 200 OK
+  Content-Type: application/json   ← "JSON으로 보내드립니다"
+  Content-Language: ko             ← "한국어 응답입니다"
+  Content-Encoding: gzip           ← "gzip으로 압축했습니다"
 
-  응답:
-    HTTP/1.1 200 OK
-    Content-Type: application/json   ← "JSON으로 보내드립니다"
-    Content-Language: ko             ← "한국어 응답입니다"
-    Content-Encoding: gzip           ← "gzip으로 압축했습니다"
-
-    {"users": [{"name": "김철수"}, ...]}
-
-→ 같은 리소스(/api/users)도 Accept 헤더에 따라
-  JSON, XML, HTML 등 다른 형식으로 응답 가능`}
+  {"users": [{"name": "김철수"}, ...]}`}
+            </CodeBlock>
+            <div style={{ marginTop: '8px', fontSize: '11px', color: '#5a6a85', lineHeight: 1.6 }}>
+              → 같은 리소스(/api/users)도 Accept 헤더에 따라 JSON, XML, HTML 등 다른 형식으로 응답 가능
             </div>
           </div>
         </div>
@@ -743,14 +762,14 @@ TCP/IP 4계층:
               <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.8, marginBottom: '10px' }}>
                 <strong style={{ color: '#e2e8f0' }}>파일 업로드</strong>에 사용. 각 필드를 boundary로 구분하여 바이너리 데이터도 전송 가능합니다.
               </div>
-              <div style={{ padding: '10px 14px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.6, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
+              <CodeBlock lang="HTTP">
 {`--boundary123
 Content-Disposition: form-data; name="file"
 Content-Type: image/png
 
 [바이너리 데이터...]
 --boundary123--`}
-              </div>
+              </CodeBlock>
               <div style={{ marginTop: '8px', fontSize: '11px', color: '#5a6a85', lineHeight: 1.6 }}>
                 텍스트 + 바이너리 혼합 전송 가능. 파일 업로드 시 필수.
               </div>

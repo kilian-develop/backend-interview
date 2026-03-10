@@ -3,7 +3,9 @@ import HeroSection from '../../components/doc/HeroSection'
 import SectionTitle from '../../components/doc/SectionTitle'
 import HighlightBox from '../../components/doc/HighlightBox'
 import InterviewQuestions from '../../components/doc/InterviewQuestions'
+import { CodeBlock } from '../../components/doc/CodeBlock'
 import AnimationControls from '../../components/doc/AnimationControls'
+import { DiagramContainer, DiagramNode, DiagramArrow, DiagramFlow, DiagramGroup, DiagramGrid } from '../../components/doc/Diagram'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 import { useAnimationTimeline } from '../../hooks/useAnimationTimeline'
 
@@ -219,25 +221,35 @@ export default function ConnectionPool() {
               </div>
             </div>
 
-            {/* ASCII 다이어그램 */}
-            <div style={{ margin: '12px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`┌─────────────────────────────────────────────────────────┐
-│                    Connection Pool                       │
-│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐          │
-│  │ Conn │ │ Conn │ │ Conn │ │ Conn │ │ Conn │  (idle)   │
-│  │  #1  │ │  #2  │ │  #3  │ │  #4  │ │  #5  │          │
-│  └──┬───┘ └──┬───┘ └──┬───┘ └──────┘ └──────┘          │
-│     │        │        │                                  │
-│     ▼        ▼        ▼                                  │
-│  [Req A]  [Req B]  [Req C]   (active - 사용 중)          │
-│                                                          │
-│  Req A 완료 → Conn #1 반납 (idle로 복귀)                  │
-│  Req D 도착 → Conn #1 재사용!  (0.1ms)                    │
-│                                                          │
-│  ※ 새 커넥션 생성: TCP + Auth + Init = 5~30ms            │
-│  ※ 풀에서 빌리기: ~0.1ms (300배 빠름)                     │
-└─────────────────────────────────────────────────────────┘`}
-            </div>
+            {/* 커넥션 풀 구조 다이어그램 */}
+            <DiagramContainer title="CONNECTION POOL 구조">
+              <DiagramFlow vertical>
+                <DiagramGroup label="Connection Pool" color="#3b82f6">
+                  <DiagramFlow>
+                    <DiagramNode label="Conn #1" sub="사용 중" color="#3b82f6" />
+                    <DiagramNode label="Conn #2" sub="사용 중" color="#3b82f6" />
+                    <DiagramNode label="Conn #3" sub="사용 중" color="#3b82f6" />
+                    <DiagramNode label="Conn #4" sub="idle" color="#22c55e" />
+                    <DiagramNode label="Conn #5" sub="idle" color="#22c55e" />
+                  </DiagramFlow>
+                </DiagramGroup>
+                <DiagramFlow>
+                  <DiagramArrow vertical label="빌려줌" color="#3b82f6" />
+                  <DiagramArrow vertical label="빌려줌" color="#3b82f6" />
+                  <DiagramArrow vertical label="빌려줌" color="#3b82f6" />
+                </DiagramFlow>
+                <DiagramFlow>
+                  <DiagramNode label="Req A" color="#3b82f6" />
+                  <DiagramNode label="Req B" color="#3b82f6" />
+                  <DiagramNode label="Req C" color="#3b82f6" />
+                </DiagramFlow>
+                <DiagramFlow style={{ marginTop: '12px', gap: '16px', justifyContent: 'center' }}>
+                  <DiagramNode label="새 커넥션 생성" sub="TCP + Auth + Init = 5~30ms" color="#3b82f6" />
+                  <DiagramNode label="풀에서 빌리기" sub="~0.1ms (300배 빠름)" color="#22c55e" />
+                  <DiagramNode label="Req D → 재사용!" sub="완료 후 반납된 Conn 재사용" color="#06b6d4" />
+                </DiagramFlow>
+              </DiagramFlow>
+            </DiagramContainer>
           </div>
         </div>
 
@@ -523,21 +535,41 @@ export default function ConnectionPool() {
               </div>
             </div>
 
-            {/* ASCII 시각화 */}
-            <div style={{ margin: '12px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`DB Server (max_connections = 200, 여유분 20 = 사용 가능 180)
-│
-├── Service A (인스턴스 3개)
-│     └── pool_size = 180 / 3서비스 / 3인스턴스 = 20
-│
-├── Service B (인스턴스 3개)
-│     └── pool_size = 180 / 3서비스 / 3인스턴스 = 20
-│
-└── Service C (인스턴스 3개)
-      └── pool_size = 180 / 3서비스 / 3인스턴스 = 20
-
-총 사용 커넥션 = 20 × 3 × 3 = 180 (max_connections 이내)`}
-            </div>
+            {/* 멀티 서비스 풀 배분 다이어그램 */}
+            <DiagramContainer title="멀티 서비스 커넥션 풀 배분">
+              <DiagramFlow vertical>
+                <DiagramNode icon="🗄" label="DB Server" sub="max_connections = 200 / 여유분 20 = 사용 가능 180" color="#3b82f6" />
+                <DiagramFlow>
+                  <DiagramArrow vertical color="#06b6d4" />
+                  <DiagramArrow vertical color="#a855f7" />
+                  <DiagramArrow vertical color="#22c55e" />
+                </DiagramFlow>
+                <DiagramGrid cols={3}>
+                  <DiagramGroup label="Service A (pool_size=20)" color="#06b6d4">
+                    <DiagramFlow vertical>
+                      <DiagramNode label="Instance 1" sub="20 conn" color="#06b6d4" />
+                      <DiagramNode label="Instance 2" sub="20 conn" color="#06b6d4" />
+                      <DiagramNode label="Instance 3" sub="20 conn" color="#06b6d4" />
+                    </DiagramFlow>
+                  </DiagramGroup>
+                  <DiagramGroup label="Service B (pool_size=20)" color="#a855f7">
+                    <DiagramFlow vertical>
+                      <DiagramNode label="Instance 1" sub="20 conn" color="#a855f7" />
+                      <DiagramNode label="Instance 2" sub="20 conn" color="#a855f7" />
+                      <DiagramNode label="Instance 3" sub="20 conn" color="#a855f7" />
+                    </DiagramFlow>
+                  </DiagramGroup>
+                  <DiagramGroup label="Service C (pool_size=20)" color="#22c55e">
+                    <DiagramFlow vertical>
+                      <DiagramNode label="Instance 1" sub="20 conn" color="#22c55e" />
+                      <DiagramNode label="Instance 2" sub="20 conn" color="#22c55e" />
+                      <DiagramNode label="Instance 3" sub="20 conn" color="#22c55e" />
+                    </DiagramFlow>
+                  </DiagramGroup>
+                </DiagramGrid>
+                <DiagramNode label="총 사용 커넥션 = 20 x 3 x 3 = 180" sub="max_connections 이내" color="#3b82f6" />
+              </DiagramFlow>
+            </DiagramContainer>
           </div>
 
           <HighlightBox color="#22c55e">
@@ -571,8 +603,7 @@ export default function ConnectionPool() {
             </div>
 
             {/* 실무 설정 예시 */}
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#22c55e', marginBottom: '12px' }}>실무 설정 예시 (application.yml)</div>
-            <div style={{ margin: '0 0 16px', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
+            <CodeBlock title="실무 설정 예시" lang="YAML" style={{ marginBottom: '16px' }}>
 {`spring:
   datasource:
     hikari:
@@ -582,7 +613,7 @@ export default function ConnectionPool() {
       idle-timeout: 600000         # 유휴 커넥션 제거 (10분)
       max-lifetime: 1800000        # 커넥션 최대 수명 (30분)
       leak-detection-threshold: 2000  # 누수 탐지 (2초)`}
-            </div>
+            </CodeBlock>
 
             {/* 각 설정값 설명 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -789,22 +820,30 @@ export default function ConnectionPool() {
           {/* 둘의 관계 */}
           <div style={{ background: '#0e1118', border: '1px solid #1a2234', borderRadius: '16px', padding: '28px', marginBottom: '16px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', marginBottom: '16px' }}>둘의 관계: 스레드가 커넥션을 사용한다</div>
-            <div style={{ margin: '0 0 16px', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`Tomcat Thread Pool (200 threads)
-│
-├── Thread-1 ──┐
-├── Thread-2 ──┤    HikariCP Pool (10 connections)
-├── Thread-3 ──┤    ┌──────┐ ┌──────┐ ┌──────┐
-│   ...        ├──→ │Conn 1│ │Conn 2│ │ ...  │ ──→  DB Server
-├── Thread-199 ┤    └──────┘ └──────┘ └──────┘
-├── Thread-200 ┘
-│
-│  모든 스레드가 동시에 DB를 사용하지 않으므로
-│  Thread 200개 + Connection 10~20개가 일반적인 조합
-│
-│  만약 Thread 200개 + Connection 200개라면?
-│  → DB 서버에 200개 동시 쿼리 → 컨텍스트 스위칭 폭증 → 성능 저하`}
-            </div>
+            <DiagramContainer title="THREAD POOL vs CONNECTION POOL">
+              <DiagramFlow>
+                <DiagramGroup label="Tomcat Thread Pool (200 threads)" color="#a855f7">
+                  <DiagramFlow wrap>
+                    <DiagramNode label="Thread-1" color="#a855f7" />
+                    <DiagramNode label="Thread-2" color="#a855f7" />
+                    <DiagramNode label="Thread-3" color="#a855f7" />
+                    <DiagramNode label="..." color="#a855f7" />
+                    <DiagramNode label="Thread-199" color="#a855f7" />
+                    <DiagramNode label="Thread-200" color="#a855f7" />
+                  </DiagramFlow>
+                </DiagramGroup>
+                <DiagramArrow label="커넥션 획득" color="#3b82f6" />
+                <DiagramGroup label="HikariCP Pool (10 connections)" color="#3b82f6">
+                  <DiagramFlow vertical>
+                    <DiagramNode label="Conn 1" color="#3b82f6" />
+                    <DiagramNode label="Conn 2" color="#3b82f6" />
+                    <DiagramNode label="..." color="#3b82f6" />
+                  </DiagramFlow>
+                </DiagramGroup>
+                <DiagramArrow label="쿼리 실행" color="#22c55e" />
+                <DiagramNode icon="🗄" label="DB Server" color="#22c55e" />
+              </DiagramFlow>
+            </DiagramContainer>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: '12px' }}>
               {[
                 { label: 'Tomcat Thread Pool', value: '200개', desc: 'HTTP 요청을 동시에 처리할 수 있는 스레드 수', color: '#a855f7' },

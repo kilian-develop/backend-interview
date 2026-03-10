@@ -6,6 +6,7 @@ import AnimationControls from '../../components/doc/AnimationControls'
 import InterviewQuestions from '../../components/doc/InterviewQuestions'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 import { useAnimationTimeline } from '../../hooks/useAnimationTimeline'
+import { DiagramContainer, DiagramNode, DiagramArrow, DiagramFlow, DiagramGroup } from '../../components/doc/Diagram'
 
 const CSS = `
 .hh-compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:48px; }
@@ -389,15 +390,23 @@ export default function HttpVsHttps() {
                 사용자가 <code style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>http://</code>로 접근하더라도
                 브라우저가 자동으로 <code style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>https://</code>로 변환합니다.
               </div>
-              <div style={{ margin: '16px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`HTTP 응답 헤더:
-Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-
-┌─────────────────┬──────────────────────────────────────────────┐
-│ max-age=31536000│ 1년간 HTTPS 강제 (초 단위)                    │
-│ includeSubDomains│ 모든 서브도메인에도 적용                      │
-│ preload          │ 브라우저 Preload List 등록 요청               │
-└─────────────────┴──────────────────────────────────────────────┘`}
+              <div style={{ margin: '16px 0', padding: '16px 18px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#5a6a85', marginBottom: '8px', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HTTP 응답 헤더</div>
+                <div style={{ padding: '8px 12px', background: '#0f172a', borderRadius: '6px', fontFamily: 'var(--mono)', fontSize: '11px', color: '#94a3b8', overflowX: 'auto', marginBottom: '12px' }}>
+                  Strict-Transport-Security: <span style={{ color: '#3b82f6' }}>max-age=31536000</span>; <span style={{ color: '#a855f7' }}>includeSubDomains</span>; <span style={{ color: '#22c55e' }}>preload</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { param: 'max-age=31536000', desc: '1년간 HTTPS 강제 (초 단위)', color: '#3b82f6' },
+                    { param: 'includeSubDomains', desc: '모든 서브도메인에도 적용', color: '#a855f7' },
+                    { param: 'preload', desc: '브라우저 Preload List 등록 요청', color: '#22c55e' },
+                  ].map((item) => (
+                    <div key={item.param} style={{ display: 'flex', alignItems: 'baseline', gap: '10px', fontSize: '11px' }}>
+                      <code style={{ fontFamily: 'var(--mono)', color: item.color, fontWeight: 700, flexShrink: 0 }}>{item.param}</code>
+                      <span style={{ color: '#94a3b8' }}>{item.desc}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -410,30 +419,65 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
                 HTTPS 리다이렉트만으로는 <strong style={{ color: '#fca5a5' }}>SSL Stripping(다운그레이드 공격)</strong>에 취약합니다.
                 공격자가 중간에서 HTTPS를 HTTP로 다운그레이드시켜 평문 통신을 유도하는 공격입니다.
               </div>
-              <div style={{ margin: '0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`HSTS 없이 301 리다이렉트만 사용하는 경우:
-
-Client ── http://bank.com ──→ Attacker ── http://bank.com ──→ Server
-   │                             │                              │
-   │  ← http 평문 응답 ←─────── │ ←── 301 → https://bank.com ──│
-   │                             │                              │
-   │  (공격자가 HTTPS를 벗겨냄)   │ ── https://bank.com ────────→│
-   │  ← http 평문 데이터 ←───── │ ←── 암호화된 응답 ←───────────│
-   ▼                             ▼
-   Client는 HTTP로 통신 중      Attacker는 Server와 HTTPS 통신
-   (암호화 없이 데이터 노출)     (중간에서 평문 데이터 탈취 가능)
-
-
-HSTS가 적용된 경우:
-
-Client ── bank.com 접속 시도 ──→
-   │
-   │  브라우저: "이 도메인은 HSTS 적용됨"
-   │  → 네트워크 요청 전에 자체적으로 https:// 변환
-   │
-Client ── https://bank.com ──→ Server (직접 HTTPS 연결)
-   │
-   ✓ 공격자가 끼어들 HTTP 구간이 아예 존재하지 않음`}
+              <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#ef4444', marginBottom: '8px', fontFamily: "'JetBrains Mono',monospace" }}>
+                  HSTS 없이 301 리다이렉트만 사용하는 경우:
+                </div>
+                <DiagramContainer title="SSL Stripping 공격 흐름">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                    <DiagramFlow>
+                      <DiagramNode icon="💻" label="Client" color="#3b82f6" />
+                      <DiagramArrow label="HTTP 요청" color="#ef4444" />
+                      <DiagramNode icon="👤" label="Attacker" color="#ef4444" />
+                      <DiagramArrow label="HTTP 전달" color="#ef4444" />
+                      <DiagramNode icon="🖥️" label="Server" color="#22c55e" />
+                    </DiagramFlow>
+                    <DiagramFlow>
+                      <DiagramNode icon="🖥️" label="Server" color="#22c55e" />
+                      <DiagramArrow label="301 → HTTPS" color="#22c55e" dashed />
+                      <DiagramNode icon="👤" label="Attacker" color="#ef4444" />
+                      <DiagramArrow label="HTTP 평문 응답" color="#ef4444" dashed />
+                      <DiagramNode icon="💻" label="Client" color="#3b82f6" />
+                    </DiagramFlow>
+                    <DiagramFlow>
+                      <DiagramNode icon="💻" label="Client" color="#3b82f6" />
+                      <DiagramArrow label="HTTP 평문 데이터" color="#ef4444" />
+                      <DiagramNode icon="👤" label="Attacker" color="#ef4444" sub="평문 데이터 탈취" />
+                      <DiagramArrow label="HTTPS 암호화" color="#22c55e" />
+                      <DiagramNode icon="🖥️" label="Server" color="#22c55e" />
+                    </DiagramFlow>
+                    <div style={{ fontSize: '10px', color: '#ef4444', fontFamily: 'var(--mono)', marginTop: '8px', textAlign: 'center', lineHeight: 1.6 }}>
+                      Client는 HTTP로 통신 중 (암호화 없이 데이터 노출)<br />Attacker는 Server와 HTTPS 통신하며 중간에서 평문 데이터 탈취
+                    </div>
+                  </div>
+                </DiagramContainer>
+              </div>
+              <div style={{ marginTop: '16px', marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#22c55e', marginBottom: '8px', fontFamily: "'JetBrains Mono',monospace" }}>
+                  HSTS가 적용된 경우:
+                </div>
+                <DiagramContainer title="HSTS 적용 시 — 안전한 흐름">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                    <DiagramGroup label="HSTS 적용 도메인" color="#22c55e">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', padding: '8px 0' }}>
+                        <div style={{ fontSize: '10px', color: '#22c55e', fontFamily: 'var(--mono)', marginBottom: '4px' }}>브라우저: HSTS 확인 → HTTPS 자동 변환</div>
+                        <DiagramFlow>
+                          <DiagramNode icon="💻" label="Client" color="#3b82f6" sub="HTTPS 직접 연결" />
+                          <DiagramArrow label="HTTPS" color="#22c55e" />
+                          <DiagramNode icon="🖥️" label="Server" color="#22c55e" />
+                        </DiagramFlow>
+                        <DiagramFlow>
+                          <DiagramNode icon="🖥️" label="Server" color="#22c55e" />
+                          <DiagramArrow label="암호화된 응답" color="#22c55e" dashed />
+                          <DiagramNode icon="💻" label="Client" color="#3b82f6" />
+                        </DiagramFlow>
+                      </div>
+                    </DiagramGroup>
+                    <div style={{ fontSize: '10px', color: '#22c55e', fontFamily: 'var(--mono)', marginTop: '4px' }}>
+                      공격자가 끼어들 HTTP 구간이 존재하지 않음
+                    </div>
+                  </div>
+                </DiagramContainer>
               </div>
             </div>
 
@@ -484,19 +528,27 @@ Client ── https://bank.com ──→ Server (직접 HTTPS 연결)
                 HSTS에는 <strong style={{ color: '#c084fc' }}>TOFU(Trust On First Use)</strong> 문제가 있습니다.
                 <strong style={{ color: '#fca5a5' }}> 최초 방문 시에는 아직 HSTS 정책이 저장되지 않았으므로</strong>, 첫 번째 HTTP 요청은 여전히 공격에 노출될 수 있습니다.
               </div>
-              <div style={{ margin: '12px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`HSTS Preload List로 TOFU 문제 해결:
-
-1. 서버 헤더에 preload 디렉티브 추가
-   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-
-2. hstspreload.org에 도메인 등록 신청
-
-3. Chrome, Firefox, Safari 등 주요 브라우저에 하드코딩
-   → 한 번도 방문하지 않은 사용자도 처음부터 HTTPS 강제
-
-4. 주의: Preload List에서 제거하려면 수개월 소요
-   → 등록 전에 HTTPS 전환이 완전히 완료되었는지 확인 필수`}
+              <div style={{ margin: '12px 0', padding: '16px 18px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '10px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#e2e8f0', marginBottom: '12px', fontFamily: 'var(--mono)' }}>HSTS Preload List로 TOFU 문제 해결</div>
+                <ol style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <li style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.6 }}>
+                    서버 헤더에 <strong style={{ color: '#22c55e' }}>preload</strong> 디렉티브 추가
+                    <div style={{ marginTop: '4px', padding: '6px 10px', background: '#0f172a', borderRadius: '6px', fontFamily: 'var(--mono)', fontSize: '10px', color: '#94a3b8', overflowX: 'auto' }}>
+                      Strict-Transport-Security: max-age=63072000; includeSubDomains; <span style={{ color: '#22c55e', fontWeight: 700 }}>preload</span>
+                    </div>
+                  </li>
+                  <li style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.6 }}>
+                    <strong style={{ color: '#3b82f6' }}>hstspreload.org</strong>에 도메인 등록 신청
+                  </li>
+                  <li style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.6 }}>
+                    Chrome, Firefox, Safari 등 주요 브라우저에 <strong>하드코딩</strong>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>→ 한 번도 방문하지 않은 사용자도 처음부터 HTTPS 강제</div>
+                  </li>
+                  <li style={{ fontSize: '12px', color: '#fca5a5', lineHeight: 1.6 }}>
+                    주의: Preload List에서 <strong>제거하려면 수개월</strong> 소요
+                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>→ 등록 전에 HTTPS 전환이 완전히 완료되었는지 확인 필수</div>
+                  </li>
+                </ol>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
                 {[

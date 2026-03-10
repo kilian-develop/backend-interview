@@ -3,9 +3,11 @@ import HeroSection from '../../components/doc/HeroSection'
 import SectionTitle from '../../components/doc/SectionTitle'
 import AnimationControls from '../../components/doc/AnimationControls'
 import HighlightBox from '../../components/doc/HighlightBox'
+import { CodeBlock } from '../../components/doc/CodeBlock'
 import InterviewQuestions from '../../components/doc/InterviewQuestions'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 import { useAnimationTimeline } from '../../hooks/useAnimationTimeline'
+import { DiagramContainer, DiagramNode, DiagramArrow, DiagramFlow, DiagramGroup } from '../../components/doc/Diagram'
 
 const CSS = `
 .cb-compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
@@ -124,19 +126,19 @@ export default function CircuitBreakerRetry() {
             </div>
 
             {/* 장애 전파 시나리오 */}
-            <div style={{ margin: '12px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`  ┌──────────┐     ┌──────────┐     ┌──────────────┐
-  │  상품     │────→│  주문     │────→│  결제 서비스  │
-  │  서비스   │     │  서비스   │     │  ⚠️ 장애 발생! │
-  └──────────┘     └──────────┘     └──────────────┘
-       ↑                ↑                  │
-       │                │                  ↓
-  스레드 고갈!      응답 대기 →       타임아웃 / 에러
-  서비스 다운!      스레드 고갈!
-
-  ────────────────────────────────────────────────────
-  결제 서비스 장애 → 주문 서비스 스레드 고갈 → 상품 서비스까지 다운
-  = Cascading Failure (장애 전파)`}
+            <div style={{ margin: '12px 0' }}>
+              <DiagramContainer title="Cascading Failure 시나리오">
+                <DiagramFlow>
+                  <DiagramNode icon="📦" label="상품 서비스" color="#3b82f6" sub="요청" />
+                  <DiagramArrow label="요청" color="#3b82f6" />
+                  <DiagramNode icon="🛒" label="주문 서비스" color="#3b82f6" sub="응답 대기 → 스레드 고갈" />
+                  <DiagramArrow label="요청" color="#3b82f6" />
+                  <DiagramNode icon="⚠️" label="결제 서비스" color="#ef4444" sub="장애 발생!" />
+                </DiagramFlow>
+                <div style={{ textAlign: 'center', marginTop: '12px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#64748b' }}>
+                  결제 서비스 장애 → 주문 서비스 스레드 고갈 → 상품 서비스까지 다운 = <span style={{ color: '#ef4444' }}>Cascading Failure</span>
+                </div>
+              </DiagramContainer>
             </div>
 
             <div style={{ fontSize: '12px', color: '#5a6a85', background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '10px', padding: '14px 18px', lineHeight: 1.7, marginTop: '16px' }}>
@@ -221,20 +223,20 @@ export default function CircuitBreakerRetry() {
           </div>
 
           {/* 상태 전이 다이어그램 */}
-          <div style={{ margin: '12px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`  ┌────────────────── 상태 전이 다이어그램 ──────────────────┐
-  │                                                         │
-  │    CLOSED ──(실패율 > 임계값)──→ OPEN                    │
-  │      ↑                            │                     │
-  │      │                    (timeout 경과)                 │
-  │      │                            ↓                     │
-  │      └──(성공)── HALF_OPEN ──(실패)──→ OPEN              │
-  │                                                         │
-  └─────────────────────────────────────────────────────────┘
-
-  CLOSED    → 정상 통과, 실패율 모니터링
-  OPEN      → 즉시 거부 (Fast Fail), timeout 대기
-  HALF_OPEN → 시험 요청, 복구 여부 판단`}
+          <div style={{ margin: '12px 0' }}>
+            <DiagramContainer title="Circuit Breaker 상태 전이">
+              <DiagramFlow>
+                <DiagramNode icon="✅" label="CLOSED" color="#22c55e" sub="정상 통과 · 실패율 모니터링" />
+                <DiagramArrow label="실패율 > 임계값" color="#ef4444" />
+                <DiagramNode icon="🚫" label="OPEN" color="#ef4444" sub="즉시 거부 (Fast Fail) · timeout 대기" />
+                <DiagramArrow label="timeout 경과" color="#f59e0b" />
+                <DiagramNode icon="🔍" label="HALF_OPEN" color="#f59e0b" sub="시험 요청 · 복구 여부 판단" />
+              </DiagramFlow>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '12px', fontSize: '10px', fontFamily: "'JetBrains Mono',monospace", color: '#64748b' }}>
+                <span>시험 성공 → <span style={{ color: '#22c55e' }}>CLOSED</span></span>
+                <span>시험 실패 → <span style={{ color: '#ef4444' }}>OPEN</span></span>
+              </div>
+            </DiagramContainer>
           </div>
 
           <HighlightBox color="#06b6d4" style={{ marginTop: '16px' }}>
@@ -447,25 +449,33 @@ export default function CircuitBreakerRetry() {
                 <div className="cb-retry-badge" style={{ color: r.badgeColor, background: r.badgeBg }}>{r.badge}</div>
                 <div className="cb-retry-title" style={{ color: r.color }}>{r.title}</div>
                 <div className="cb-retry-desc">{r.desc}</div>
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', color: '#64748b', lineHeight: 1.8, whiteSpace: 'pre', overflowX: 'auto' }}>
-                  {r.diagram}
-                </div>
+                <CodeBlock>{r.diagram}</CodeBlock>
               </div>
             ))}
           </div>
 
           {/* Exponential Backoff 다이어그램 */}
-          <div style={{ margin: '20px 0 12px', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`  Exponential Backoff with Jitter
-  ────────────────────────────────────────────────────
-  Attempt 1: ─ 1s ──────────────→ retry
-  Attempt 2: ──── 2s + jitter ──────────→ retry
-  Attempt 3: ──────── 4s + jitter ──────────────→ retry
-  Attempt 4: ──────────────── 8s + jitter ──────────────────→ retry
-  Max retries exceeded → give up (fallback 실행)
-
-  Jitter = random(0, backoff) → 동시 재시도 분산 효과
-  여러 클라이언트가 동시에 재시도하는 Thundering Herd 방지`}
+          <div style={{ margin: '20px 0 12px' }}>
+            <DiagramContainer title="Exponential Backoff with Jitter">
+              <DiagramGroup label="Backoff Flow" color="#3b82f6">
+                <DiagramFlow wrap>
+                  <DiagramNode icon="❌" label="FAIL" color="#ef4444" />
+                  <DiagramArrow label="1s" color="#f59e0b" />
+                  <DiagramNode icon="🔄" label="Retry 1" color="#3b82f6" />
+                  <DiagramArrow label="2s + jitter" color="#f59e0b" />
+                  <DiagramNode icon="🔄" label="Retry 2" color="#3b82f6" />
+                  <DiagramArrow label="4s + jitter" color="#f59e0b" />
+                  <DiagramNode icon="🔄" label="Retry 3" color="#3b82f6" />
+                  <DiagramArrow label="8s + jitter" color="#f59e0b" />
+                  <DiagramNode icon="🔄" label="Retry 4" color="#3b82f6" />
+                  <DiagramArrow label="FAIL" color="#ef4444" />
+                  <DiagramNode icon="🛑" label="Give up" color="#ef4444" sub="fallback 실행" />
+                </DiagramFlow>
+              </DiagramGroup>
+              <div style={{ textAlign: 'center', marginTop: '12px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#64748b' }}>
+                Jitter = random(0, backoff) → 동시 재시도 분산 효과 / <span style={{ color: '#f59e0b' }}>Thundering Herd 방지</span>
+              </div>
+            </DiagramContainer>
           </div>
 
           <HighlightBox color="#f59e0b" style={{ marginTop: '16px' }}>
@@ -505,14 +515,14 @@ export default function CircuitBreakerRetry() {
               <div className="cb-card" style={{ borderTop: '3px solid #22c55e', boxShadow: '0 0 30px rgba(34,197,94,0.1)' }}>
                 <div className="cb-card-title" style={{ color: '#22c55e' }}>✅ 올바른 순서</div>
                 <div className="cb-card-sub">CircuitBreaker → Retry → 실제 호출</div>
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', padding: '12px', background: '#080b11', borderRadius: '8px', color: '#64748b', lineHeight: 1.8, whiteSpace: 'pre' }}>
+                <CodeBlock>
 {`요청 → [CircuitBreaker 확인]
          ├─ OPEN → 즉시 실패 (재시도 X)
          └─ CLOSED → [Retry]
                       ├─ 호출 성공 → 응답
                       └─ 호출 실패 → 재시도
                            └─ 모두 실패 → CB 실패 기록`}
-                </div>
+                </CodeBlock>
                 <div style={{ fontSize: '11px', color: '#5a6a85', marginTop: '12px', lineHeight: 1.7 }}>
                   CB가 OPEN이면 재시도 자체를 하지 않아 불필요한 호출을 완전히 차단합니다.
                 </div>
@@ -521,7 +531,7 @@ export default function CircuitBreakerRetry() {
               <div className="cb-card" style={{ borderTop: '3px solid #ef4444', boxShadow: '0 0 30px rgba(239,68,68,0.1)' }}>
                 <div className="cb-card-title" style={{ color: '#ef4444' }}>❌ 잘못된 순서</div>
                 <div className="cb-card-sub">Retry → CircuitBreaker → 실제 호출</div>
-                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: '10px', padding: '12px', background: '#080b11', borderRadius: '8px', color: '#64748b', lineHeight: 1.8, whiteSpace: 'pre' }}>
+                <CodeBlock>
 {`요청 → [Retry]
          └─ [CircuitBreaker 확인]
               ├─ OPEN → 실패
@@ -529,7 +539,7 @@ export default function CircuitBreakerRetry() {
               └─ CLOSED → 호출
                   └─ 실패 → Retry가 또 재시도
                        └─ CB OPEN이어도 계속 재시도 😱`}
-                </div>
+                </CodeBlock>
                 <div style={{ fontSize: '11px', color: '#5a6a85', marginTop: '12px', lineHeight: 1.7 }}>
                   CB가 OPEN이어도 Retry가 계속 재시도하여 의미 없는 호출이 반복됩니다.
                 </div>
@@ -538,26 +548,31 @@ export default function CircuitBreakerRetry() {
           </div>
 
           {/* 조합 다이어그램 */}
-          <div style={{ margin: '12px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`  ✅ 실무 권장 데코레이터 순서
-  ──────────────────────────────────────────────
-
-  CircuitBreaker ( Retry ( RateLimiter ( Bulkhead ( 실제 호출 ) ) ) )
-
-  ← 바깥                                             안쪽 →
-
-  Spring AOP에서 order가 낮을수록 바깥(먼저 실행):
-  @CircuitBreaker  → order = 1 (바깥, 먼저 검사)
-  @Retry           → order = 2 (안쪽, CB 통과 후 실행)
-
-  실행 흐름:
-  요청 → CB 상태 확인 ─┬─ OPEN → 즉시 실패 (Retry 실행 안 함)
-                       └─ CLOSED → Retry 로직 → 실제 호출
-                                    └─ 모든 재시도 실패 시 CB에 실패 1회 기록
-
-  ⚠ Resilience4j의 기본(default) 순서는 Retry가 바깥이지만,
-  실무에서는 위처럼 CB를 바깥으로 커스터마이즈하는 것을 권장합니다.
-  (CB가 OPEN일 때 의미 없는 재시도를 방지)`}
+          <div style={{ margin: '12px 0' }}>
+            <DiagramContainer title="실무 권장 데코레이터 순서">
+              <DiagramGroup label="Decorator Chain" color="#3b82f6">
+                <DiagramFlow wrap>
+                  <DiagramNode icon="📤" label="요청" color="#3b82f6" />
+                  <DiagramArrow color="#06b6d4" />
+                  <DiagramNode icon="🔌" label="CircuitBreaker" color="#06b6d4" sub="order=1" />
+                  <DiagramArrow label="CLOSED" color="#f59e0b" />
+                  <DiagramNode icon="🔄" label="Retry" color="#f59e0b" sub="order=2" />
+                  <DiagramArrow color="#22c55e" />
+                  <DiagramNode icon="🚦" label="RateLimiter" color="#22c55e" />
+                  <DiagramArrow color="#a855f7" />
+                  <DiagramNode icon="🧱" label="Bulkhead" color="#a855f7" />
+                  <DiagramArrow color="#3b82f6" />
+                  <DiagramNode icon="⚡" label="실제 호출" color="#3b82f6" />
+                </DiagramFlow>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '12px', fontSize: '10px', fontFamily: "'JetBrains Mono',monospace", color: '#64748b' }}>
+                  <span>CB OPEN → <span style={{ color: '#ef4444' }}>즉시 실패 (Retry 실행 안 함)</span></span>
+                  <span>모든 재시도 실패 → <span style={{ color: '#ef4444' }}>CB에 실패 1회 기록</span></span>
+                </div>
+              </DiagramGroup>
+            </DiagramContainer>
+            <div style={{ padding: '8px 16px 12px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#64748b', textAlign: 'center', lineHeight: 1.7 }}>
+              <span style={{ color: '#f59e0b' }}>Resilience4j 기본 순서는 Retry가 바깥</span>이지만, 실무에서는 CB를 바깥으로 커스터마이즈 권장
+            </div>
           </div>
 
           <HighlightBox color="#06b6d4" style={{ marginTop: '16px' }}>
@@ -573,9 +588,7 @@ export default function CircuitBreakerRetry() {
           </div>
 
           {/* Java 코드 예시 */}
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a6a85', marginBottom: '8px', fontFamily: "'JetBrains Mono',monospace" }}>Java 코드 — 어노테이션 기반 적용</div>
-            <div style={{ padding: '16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '10px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#94a3b8', overflowX: 'auto', whiteSpace: 'pre' }}>
+          <CodeBlock title="어노테이션 기반 적용" lang="Java" style={{ marginBottom: '16px' }}>
 {`@Service
 public class PaymentService {
 
@@ -597,13 +610,9 @@ public class PaymentService {
             "결제 서비스 일시 장애, 잠시 후 재시도합니다");
     }
 }`}
-            </div>
-          </div>
+          </CodeBlock>
 
-          {/* application.yml 예시 */}
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5a6a85', marginBottom: '8px', fontFamily: "'JetBrains Mono',monospace" }}>application.yml — 설정 예시</div>
-            <div style={{ padding: '16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '10px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#94a3b8', overflowX: 'auto', whiteSpace: 'pre' }}>
+          <CodeBlock title="설정 예시" lang="YAML">
 {`resilience4j:
   circuitbreaker:
     instances:
@@ -627,8 +636,7 @@ public class PaymentService {
           - java.util.concurrent.TimeoutException
         ignore-exceptions:                  # 재시도하지 않을 예외
           - com.example.BusinessException`}
-            </div>
-          </div>
+          </CodeBlock>
         </div>
 
         {/* Fallback 전략 */}
@@ -683,24 +691,29 @@ public class PaymentService {
           </div>
 
           {/* 조합 예시 */}
-          <div style={{ margin: '20px 0 12px', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`  Resilience 패턴 조합 예시 (실행 순서)
-  ──────────────────────────────────────────────
-
-  요청 → [Rate Limiter] 초과 시 429
-           ↓
-         [Timeout] 시간 초과 시 예외
-           ↓
-         [Circuit Breaker] OPEN 시 Fast Fail
-           ↓
-         [Bulkhead] 리소스 격리
-           ↓
-         [Retry] 일시적 실패 시 재시도
-           ↓
-         실제 서비스 호출
-
-  각 패턴이 서로 다른 레벨의 보호를 제공하여
-  전체 시스템의 회복 탄력성을 극대화합니다.`}
+          <div style={{ margin: '20px 0 12px' }}>
+            <DiagramContainer title="Resilience 패턴 조합 (실행 순서)">
+              <DiagramGroup label="Resilience Stack" color="#3b82f6">
+                <DiagramFlow vertical>
+                  <DiagramNode icon="📤" label="요청" color="#3b82f6" />
+                  <DiagramArrow vertical color="#22c55e" />
+                  <DiagramNode icon="🚦" label="Rate Limiter" color="#22c55e" sub="초과 시 429" />
+                  <DiagramArrow vertical color="#ef4444" />
+                  <DiagramNode icon="⏱️" label="Timeout" color="#ef4444" sub="시간 초과 시 예외" />
+                  <DiagramArrow vertical color="#06b6d4" />
+                  <DiagramNode icon="🔌" label="Circuit Breaker" color="#06b6d4" sub="OPEN 시 Fast Fail" />
+                  <DiagramArrow vertical color="#a855f7" />
+                  <DiagramNode icon="🧱" label="Bulkhead" color="#a855f7" sub="리소스 격리" />
+                  <DiagramArrow vertical color="#f59e0b" />
+                  <DiagramNode icon="🔄" label="Retry" color="#f59e0b" sub="일시적 실패 시 재시도" />
+                  <DiagramArrow vertical color="#3b82f6" />
+                  <DiagramNode icon="⚡" label="실제 서비스 호출" color="#3b82f6" />
+                </DiagramFlow>
+              </DiagramGroup>
+              <div style={{ textAlign: 'center', marginTop: '12px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', color: '#64748b' }}>
+                각 패턴이 서로 다른 레벨의 보호를 제공하여 전체 시스템의 회복 탄력성을 극대화합니다
+              </div>
+            </DiagramContainer>
           </div>
         </div>
 

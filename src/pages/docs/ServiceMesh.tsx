@@ -6,6 +6,7 @@ import HighlightBox from '../../components/doc/HighlightBox'
 import InterviewQuestions from '../../components/doc/InterviewQuestions'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 import { useAnimationTimeline } from '../../hooks/useAnimationTimeline'
+import { DiagramContainer, DiagramNode, DiagramArrow, DiagramFlow, DiagramGroup } from '../../components/doc/Diagram'
 
 const CSS = `
 .sm-compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
@@ -172,24 +173,28 @@ export default function ServiceMesh() {
               iptables 또는 eBPF를 사용해 트래픽을 투명하게 가로채므로, 애플리케이션 코드를 전혀 수정할 필요가 없습니다.
             </div>
 
-            {/* ASCII Diagram */}
-            <div style={{ margin: '12px 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`┌─────── Pod A ───────┐              ┌─────── Pod B ───────┐
-│                     │              │                     │
-│  ┌──────────────┐   │              │   ┌──────────────┐  │
-│  │   App A      │   │              │   │   App B      │  │
-│  │  (Business)  │   │              │   │  (Business)  │  │
-│  └──────┬───────┘   │              │   └──────▲───────┘  │
-│         │ localhost  │              │          │ localhost │
-│  ┌──────▼───────┐   │              │   ┌──────┴───────┐  │
-│  │  Sidecar     │   │   Network    │   │  Sidecar     │  │
-│  │  Proxy A     │──────────────────────│  Proxy B     │  │
-│  │  (Envoy)     │   │   mTLS       │   │  (Envoy)     │  │
-│  └──────────────┘   │              │   └──────────────┘  │
-│                     │              │                     │
-└─────────────────────┘              └─────────────────────┘
-
-  iptables/eBPF가 트래픽을 투명하게 Sidecar로 리다이렉트`}
+            {/* Sidecar Proxy Pattern Diagram */}
+            <DiagramContainer title="Sidecar Proxy Pattern">
+              <DiagramFlow>
+                <DiagramGroup label="Pod A" color="#3b82f6">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                    <DiagramNode icon="📦" label="App A" sub="(Business)" color="#3b82f6" />
+                    <DiagramArrow vertical label="localhost" color="#3b82f6" />
+                    <DiagramNode icon="🔀" label="Sidecar Proxy A" sub="(Envoy)" color="#06b6d4" />
+                  </div>
+                </DiagramGroup>
+                <DiagramArrow label="mTLS (Network)" color="#06b6d4" />
+                <DiagramGroup label="Pod B" color="#3b82f6">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                    <DiagramNode icon="🔀" label="Sidecar Proxy B" sub="(Envoy)" color="#06b6d4" />
+                    <DiagramArrow vertical label="localhost" color="#3b82f6" />
+                    <DiagramNode icon="📦" label="App B" sub="(Business)" color="#3b82f6" />
+                  </div>
+                </DiagramGroup>
+              </DiagramFlow>
+            </DiagramContainer>
+            <div style={{ fontSize: '11px', color: '#5a6a85', textAlign: 'center', fontFamily: "'JetBrains Mono',monospace", marginTop: '4px' }}>
+              iptables/eBPF가 트래픽을 투명하게 Sidecar로 리다이렉트
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
@@ -260,28 +265,34 @@ export default function ServiceMesh() {
             </div>
           </div>
 
-          {/* ASCII Diagram */}
-          <div style={{ margin: '20px 0 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`  ┌─────────────────────── Control Plane ───────────────────────┐
-  │                                                             │
-  │   ┌──────────┐    ┌──────────┐    ┌───────────────────┐     │
-  │   │  Pilot   │    │ Citadel  │    │ Telemetry/Config  │     │
-  │   │ (xDS API)│    │  (CA)    │    │   (Galley)        │     │
-  │   └────┬─────┘    └────┬─────┘    └────────┬──────────┘     │
-  │        │               │                   │                │
-  └────────┼───────────────┼───────────────────┼────────────────┘
-           │  config push  │ cert distribute   │ collect
-  ┌────────┼───────────────┼───────────────────┼────────────────┐
-  │        ▼               ▼                   ▲                │
-  │   ┌─────────┐    ┌─────────┐    ┌─────────┐                │
-  │   │Sidecar A│◄──►│Sidecar B│◄──►│Sidecar C│  Data Plane    │
-  │   └────┬────┘    └────┬────┘    └────┬────┘                │
-  │        │              │              │                      │
-  │   ┌────┴────┐    ┌────┴────┐    ┌────┴────┐                │
-  │   │ App  A  │    │ App  B  │    │ App  C  │                │
-  │   └─────────┘    └─────────┘    └─────────┘                │
-  └─────────────────────────────────────────────────────────────┘`}
-          </div>
+          {/* Control Plane / Data Plane Diagram */}
+          <DiagramContainer title="Control Plane / Data Plane">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <DiagramGroup label="Control Plane" color="#a855f7">
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <DiagramNode icon="🧭" label="Pilot" sub="(xDS API)" color="#a855f7" />
+                  <DiagramNode icon="🔐" label="Citadel" sub="(CA)" color="#a855f7" />
+                  <DiagramNode icon="📊" label="Telemetry / Config" sub="(Galley)" color="#a855f7" />
+                </div>
+              </DiagramGroup>
+              <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                <DiagramArrow vertical label="config push" color="#a855f7" />
+                <DiagramArrow vertical label="cert distribute" color="#a855f7" />
+                <DiagramArrow vertical label="collect" color="#06b6d4" />
+              </div>
+              <DiagramGroup label="Data Plane" color="#06b6d4">
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {['A', 'B', 'C'].map((name) => (
+                    <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                      <DiagramNode label={`Sidecar ${name}`} color="#06b6d4" />
+                      <DiagramArrow vertical label="localhost" color="#3b82f6" />
+                      <DiagramNode label={`App ${name}`} color="#3b82f6" />
+                    </div>
+                  ))}
+                </div>
+              </DiagramGroup>
+            </div>
+          </DiagramContainer>
         </div>
 
         {/* 트래픽 흐름 애니메이션 */}
@@ -529,30 +540,30 @@ export default function ServiceMesh() {
               ))}
             </div>
 
-            {/* ASCII Diagram */}
-            <div style={{ margin: '20px 0 0', padding: '14px 16px', background: '#080b11', border: '1px solid #1a2234', borderRadius: '8px', fontFamily: "'JetBrains Mono',monospace", fontSize: '11px', lineHeight: 1.8, color: '#64748b', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`             ┌─────────────── istiod ──────────────┐
-             │  ┌────────┐ ┌────────┐ ┌─────────┐  │
-             │  │ Pilot  │ │Citadel │ │ Galley  │  │
-             │  │(xDS)   │ │(CA)    │ │(Config) │  │
-             │  └───┬────┘ └───┬────┘ └────┬────┘  │
-             └──────┼──────────┼───────────┼────────┘
-                    │          │           │
-  ┌─────────────────┼──────────┼───────────┼──────────┐
-  │     xDS push    │  cert    │  config   │          │
-  │                 ▼          ▼           ▼          │
-  │    ┌────────────────────────────────────┐         │
-  │    │        Envoy Sidecar Proxy         │         │
-  │    │  mTLS | LB | CB | Retry | Metrics │         │
-  │    └─────────────────┬──────────────────┘         │
-  │                      │ localhost                   │
-  │    ┌─────────────────┴──────────────────┐         │
-  │    │      Application Container         │         │
-  │    │      (비즈니스 로직만 집중)          │         │
-  │    └────────────────────────────────────┘         │
-  │                 Kubernetes Pod                     │
-  └───────────────────────────────────────────────────┘`}
-            </div>
+            {/* istiod Architecture Diagram */}
+            <DiagramContainer title="istiod Architecture">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                <DiagramGroup label="istiod" color="#a855f7">
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <DiagramNode icon="🧭" label="Pilot" sub="(xDS)" color="#a855f7" />
+                    <DiagramNode icon="🔐" label="Citadel" sub="(CA)" color="#a855f7" />
+                    <DiagramNode icon="⚙️" label="Galley" sub="(Config)" color="#a855f7" />
+                  </div>
+                </DiagramGroup>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <DiagramArrow vertical label="xDS push" color="#a855f7" />
+                  <DiagramArrow vertical label="cert" color="#a855f7" />
+                  <DiagramArrow vertical label="config" color="#a855f7" />
+                </div>
+                <DiagramGroup label="Kubernetes Pod" color="#3b82f6">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                    <DiagramNode icon="🔀" label="Envoy Sidecar Proxy" sub="mTLS | LB | CB | Retry | Metrics" color="#06b6d4" />
+                    <DiagramArrow vertical label="localhost" color="#3b82f6" />
+                    <DiagramNode icon="📦" label="Application Container" sub="(Business Logic)" color="#3b82f6" />
+                  </div>
+                </DiagramGroup>
+              </div>
+            </DiagramContainer>
           </div>
           <HighlightBox color="#06b6d4" style={{ marginTop: '0' }}>
             <strong style={{ color: '#06b6d4' }}>면접 포인트:</strong> Istio v1.5 이전에는 Pilot, Citadel, Galley가 별도 프로세스로 운영되어 복잡했습니다. v1.5부터 istiod로 통합되면서 운영 부담이 크게 줄었습니다. 이는 "단순함이 최고의 기능"이라는 교훈을 보여줍니다.

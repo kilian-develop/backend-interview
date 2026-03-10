@@ -51,6 +51,40 @@ export const CATEGORIES: Category[] = [
       },
     ],
   },
+  {
+    id: 'kafka',
+    label: 'Kafka',
+    title: 'Apache Kafka',
+    color: '#f97316',
+    glow: 'rgba(249,115,22,0.22)',
+    dim: 'rgba(249,115,22,0.08)',
+    topics: [
+      {
+        slug: 'kafka',
+        icon: '⚡',
+        tag: 'Kafka · Producer · Consumer · Partition',
+        title: 'Apache Kafka',
+        desc: 'Kafka 아키텍처, Partition & Replication, 전달 보장, Consumer Group, Connect & CDC',
+      },
+    ],
+  },
+  {
+    id: 'portfolio',
+    label: 'Portfolio',
+    title: '포트폴리오 면접',
+    color: '#22c55e',
+    glow: 'rgba(34,197,94,0.22)',
+    dim: 'rgba(34,197,94,0.08)',
+    topics: [
+      {
+        slug: 'portfolio',
+        icon: '💼',
+        tag: 'Portfolio · Kafka · Batch · Migration',
+        title: '포트폴리오 면접 준비',
+        desc: '문서 전처리 서비스, 2억건+ 데이터 마이그레이션 프로젝트 기반 예상 질문과 답변 가이드',
+      },
+    ],
+  },
 ]
 
 export const ALL_TOPICS = CATEGORIES.flatMap((cat) =>

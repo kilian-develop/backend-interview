@@ -6,6 +6,9 @@ import InterviewQuestions from '../../components/doc/InterviewQuestions'
 import AnimationControls from '../../components/doc/AnimationControls'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 import { useAnimationTimeline } from '../../hooks/useAnimationTimeline'
+import { DiagramContainer, DiagramNode, DiagramArrow, DiagramFlow, DiagramGroup } from '../../components/doc/Diagram'
+// CodeBlock available for code/pseudocode blocks
+// import { CodeBlock } from '../../components/doc/CodeBlock'
 
 const CSS = `
 .nio-card { background:#0e1118; border:1px solid #1a2234; border-radius:16px; padding:24px; margin-bottom:20px; transition:transform .25s; }
@@ -15,7 +18,6 @@ const CSS = `
 .nio-card-title { font-size:18px; font-weight:900; }
 .nio-card-metaphor { font-size:12px; color:#5a6a85; font-style:italic; margin-bottom:14px; }
 .nio-card-desc { font-size:13px; color:#94a3b8; line-height:1.8; margin-bottom:14px; }
-.nio-diagram { background:#080b11; border:1px solid #1a2234; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.8; color:#64748b; white-space:pre; overflow-x:auto; padding:14px 16px; margin:12px 0; }
 .nio-pros-cons { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
 @media(max-width:560px){ .nio-pros-cons{ grid-template-columns:1fr; } }
 .nio-pro, .nio-con { padding:12px 16px; border-radius:10px; font-size:12px; line-height:1.7; }
@@ -200,19 +202,27 @@ export default function NetworkIoModel() {
             </div>
           </div>
 
-          <div className="nio-diagram">{`   Application                    Kernel
-   (유저 공간)                  (커널 공간)
-       │                            │
-       │   read() / recv()          │
-       ├───────────────────────────→│
-       │                            │  ① 데이터 준비 대기
-       │   (여기서 블로킹?          │     NIC → 커널 버퍼
-       │    폴링? 비동기?)          │
-       │                            │  ② 데이터 복사
-       │                            │     커널 버퍼 → 유저 버퍼
-       │←───────────────────────────┤
-       │   데이터 반환              │
-       ▼                            ▼`}</div>
+          <DiagramContainer title="네트워크 I/O 2단계 처리 흐름">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+              <DiagramFlow>
+                <DiagramNode icon="📱" label="Application" sub="(유저 공간)" color="#3b82f6" />
+                <DiagramArrow label="read() / recv()" color="#3b82f6" />
+                <DiagramNode icon="⚙️" label="Kernel" sub="(커널 공간)" color="#a855f7" />
+              </DiagramFlow>
+              <DiagramGroup label="① 데이터 준비 대기 (NIC → 커널 버퍼)" color="#a855f7">
+                <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'var(--mono)', textAlign: 'center', padding: '4px' }}>
+                  여기서 블로킹? 폴링? 비동기?
+                </div>
+              </DiagramGroup>
+              <DiagramGroup label="② 데이터 복사 (커널 버퍼 → 유저 버퍼)" color="#06b6d4">
+                <DiagramFlow>
+                  <DiagramNode icon="⚙️" label="Kernel" color="#a855f7" />
+                  <DiagramArrow label="데이터 반환" color="#06b6d4" dashed />
+                  <DiagramNode icon="📱" label="Application" color="#3b82f6" />
+                </DiagramFlow>
+              </DiagramGroup>
+            </div>
+          </DiagramContainer>
 
           <HighlightBox color="#3b82f6">
             <strong style={{ color: '#3b82f6' }}>5가지 I/O 모델 분류 기준:</strong> 1단계(데이터 준비)에서 블로킹하는가? 2단계(데이터 복사)에서 블로킹하는가? 이 두 질문에 대한 답이 각 모델의 특성을 결정합니다. <strong style={{ color: '#a855f7' }}>진정한 비동기 I/O만이 두 단계 모두 논블로킹</strong>입니다.
@@ -235,18 +245,26 @@ export default function NetworkIoModel() {
               데이터가 준비될 때까지 <strong style={{ color: '#94a3b8' }}>스레드가 완전히 블로킹</strong>됩니다.
               커널이 데이터를 준비하고 유저 공간으로 복사할 때까지 스레드는 아무것도 할 수 없습니다.
             </div>
-            <div className="nio-diagram">{`  Application         Kernel
-      │                  │
-      │  read()          │
-      ├─────────────────→│
-      │                  │  데이터 준비 대기...
-      │  [블로킹 ⏳]      │  (패킷 도착 대기)
-      │                  │
-      │                  │  데이터 복사
-      │  [블로킹 ⏳]      │  (커널→유저)
-      │←─────────────────┤
-      │  데이터 반환      │
-      ▼                  ▼`}</div>
+            <DiagramContainer title="Blocking I/O">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#3b82f6" />
+                  <DiagramArrow label="read()" color="#3b82f6" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <DiagramGroup label="블로킹 — 데이터 준비 대기 (패킷 도착 대기)" color="#ef4444">
+                  <div style={{ fontSize: '10px', color: '#ef4444', fontFamily: 'var(--mono)', textAlign: 'center', padding: '4px' }}>Application 블로킹 ...</div>
+                </DiagramGroup>
+                <DiagramGroup label="블로킹 — 데이터 복사 (커널 → 유저)" color="#ef4444">
+                  <div style={{ fontSize: '10px', color: '#ef4444', fontFamily: 'var(--mono)', textAlign: 'center', padding: '4px' }}>Application 블로킹 ...</div>
+                </DiagramGroup>
+                <DiagramFlow>
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                  <DiagramArrow label="데이터 반환" color="#22c55e" dashed />
+                  <DiagramNode label="Application" color="#3b82f6" />
+                </DiagramFlow>
+              </div>
+            </DiagramContainer>
             <div className="nio-card-desc" style={{ marginBottom: 0 }}>
               동시 접속을 처리하려면 <strong style={{ color: '#ef4444' }}>클라이언트 1개 = 스레드 1개</strong>가 필요합니다.
               1만 명이 접속하면 1만 개의 스레드가 필요하고, 각 스레드는 약 1MB의 스택 메모리를 소비합니다.
@@ -286,22 +304,38 @@ export default function NetworkIoModel() {
               <code style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px', color: '#f59e0b' }}>EWOULDBLOCK</code> 에러를 즉시 반환합니다.
               애플리케이션은 반복적으로 호출하여 데이터가 준비되었는지 확인합니다.
             </div>
-            <div className="nio-diagram">{`  Application         Kernel
-      │                  │
-      │  read()          │
-      ├─────────────────→│  아직 준비 안 됨
-      │←── EAGAIN ───────┤
-      │                  │
-      │  read()          │
-      ├─────────────────→│  아직 준비 안 됨
-      │←── EAGAIN ───────┤
-      │                  │
-      │  read()  (반복)   │
-      ├─────────────────→│  데이터 준비 완료!
-      │  [블로킹 ⏳]      │  데이터 복사 (커널→유저)
-      │←─────────────────┤
-      │  데이터 반환      │
-      ▼                  ▼`}</div>
+            <DiagramContainer title="Non-blocking I/O">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#06b6d4" />
+                  <DiagramArrow label="read()" color="#06b6d4" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <DiagramFlow>
+                  <DiagramNode label="Kernel" color="#f59e0b" />
+                  <DiagramArrow label="EAGAIN" color="#f59e0b" dashed />
+                  <DiagramNode label="Application" color="#06b6d4" />
+                </DiagramFlow>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#06b6d4" />
+                  <DiagramArrow label="read() (반복)" color="#06b6d4" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <DiagramFlow>
+                  <DiagramNode label="Kernel" color="#f59e0b" />
+                  <DiagramArrow label="EAGAIN" color="#f59e0b" dashed />
+                  <DiagramNode label="Application" color="#06b6d4" />
+                </DiagramFlow>
+                <DiagramGroup label="데이터 준비 완료! → 복사 (커널→유저)" color="#22c55e">
+                  <div style={{ fontSize: '10px', color: '#ef4444', fontFamily: 'var(--mono)', textAlign: 'center', padding: '4px' }}>Application 블로킹 (복사 중) ...</div>
+                </DiagramGroup>
+                <DiagramFlow>
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                  <DiagramArrow label="데이터 반환" color="#22c55e" dashed />
+                  <DiagramNode label="Application" color="#06b6d4" />
+                </DiagramFlow>
+              </div>
+            </DiagramContainer>
             <div className="nio-card-desc" style={{ marginBottom: 0 }}>
               1단계(데이터 준비)는 논블로킹이지만, <strong style={{ color: '#ef4444' }}>2단계(데이터 복사)에서는 여전히 블로킹</strong>됩니다.
               또한 데이터가 언제 준비될지 모르기 때문에 <strong style={{ color: '#ef4444' }}>CPU를 지속적으로 소모</strong>(busy waiting)합니다.
@@ -341,21 +375,40 @@ export default function NetworkIoModel() {
               <strong style={{ color: '#3b82f6' }}> 하나의 스레드가 여러 개의 파일 디스크립터(fd)를 동시에 감시</strong>합니다.
               준비된 fd에 대해서만 <code style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px', color: '#94a3b8' }}>read()</code>를 호출하므로 효율적입니다.
             </div>
-            <div className="nio-diagram">{`  Application              Kernel
-      │                       │
-      │ epoll_wait(fds[])     │  여러 fd를 동시 감시
-      ├──────────────────────→│
-      │                       │  fd3 데이터 준비 완료!
-      │←── fd3 ready ─────────┤
-      │                       │
-      │ read(fd3)             │
-      ├──────────────────────→│  데이터 복사 (커널→유저)
-      │←──────────────────────┤
-      │ 데이터 반환            │
-      │                       │
-      │ epoll_wait(fds[])     │  다시 감시 시작...
-      ├──────────────────────→│
-      ▼                       ▼`}</div>
+            <DiagramContainer title="I/O Multiplexing (epoll / kqueue)">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#22c55e" />
+                  <DiagramArrow label="epoll_wait(fds[])" color="#22c55e" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <DiagramGroup label="여러 fd를 동시 감시 → fd3 준비 완료!" color="#22c55e">
+                  <DiagramFlow>
+                    <DiagramNode label="Kernel" color="#a855f7" />
+                    <DiagramArrow label="fd3 ready" color="#22c55e" dashed />
+                    <DiagramNode label="Application" color="#22c55e" />
+                  </DiagramFlow>
+                </DiagramGroup>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#22c55e" />
+                  <DiagramArrow label="read(fd3)" color="#22c55e" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <DiagramGroup label="데이터 복사 (커널→유저)" color="#06b6d4">
+                  <DiagramFlow>
+                    <DiagramNode label="Kernel" color="#a855f7" />
+                    <DiagramArrow label="데이터 반환" color="#06b6d4" dashed />
+                    <DiagramNode label="Application" color="#22c55e" />
+                  </DiagramFlow>
+                </DiagramGroup>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#22c55e" />
+                  <DiagramArrow label="epoll_wait(fds[])" color="#22c55e" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'var(--mono)' }}>다시 감시 시작...</div>
+              </div>
+            </DiagramContainer>
             <div className="nio-card-desc" style={{ marginBottom: 0 }}>
               이것이 <strong style={{ color: '#22c55e' }}>Nginx, Redis, Node.js, Netty</strong>의 핵심 원리입니다.
               하나의 스레드(이벤트 루프)가 수만 개의 연결을 효율적으로 관리할 수 있습니다.
@@ -394,20 +447,35 @@ export default function NetworkIoModel() {
               데이터가 준비되었을 때 커널이 <strong style={{ color: '#f59e0b' }}>시그널로 알림</strong>을 보냅니다.
               시그널 핸들러에서 <code style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px', color: '#94a3b8' }}>read()</code>를 호출하여 데이터를 읽습니다.
             </div>
-            <div className="nio-diagram">{`  Application              Kernel
-      │                       │
-      │ sigaction(SIGIO)      │  시그널 핸들러 등록
-      ├──────────────────────→│
-      │                       │
-      │ (다른 작업 수행)        │  데이터 준비 대기...
-      │                       │
-      │←── SIGIO 시그널 ──────┤  데이터 준비 완료!
-      │                       │
-      │ read() (핸들러에서)    │
-      ├──────────────────────→│  데이터 복사 (커널→유저)
-      │←──────────────────────┤
-      │ 데이터 반환            │
-      ▼                       ▼`}</div>
+            <DiagramContainer title="Signal-driven I/O">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#f59e0b" />
+                  <DiagramArrow label="sigaction(SIGIO)" color="#f59e0b" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <div style={{ fontSize: '10px', color: '#22c55e', fontFamily: 'var(--mono)' }}>Application: 다른 작업 수행 (자유)</div>
+                <DiagramGroup label="데이터 준비 대기..." color="#a855f7">
+                  <DiagramFlow>
+                    <DiagramNode label="Kernel" color="#a855f7" />
+                    <DiagramArrow label="SIGIO 시그널!" color="#f59e0b" dashed />
+                    <DiagramNode label="Application" color="#f59e0b" />
+                  </DiagramFlow>
+                </DiagramGroup>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#f59e0b" />
+                  <DiagramArrow label="read() (핸들러)" color="#f59e0b" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <DiagramGroup label="데이터 복사 (커널→유저) — 블로킹" color="#ef4444">
+                  <DiagramFlow>
+                    <DiagramNode label="Kernel" color="#a855f7" />
+                    <DiagramArrow label="데이터 반환" color="#22c55e" dashed />
+                    <DiagramNode label="Application" color="#f59e0b" />
+                  </DiagramFlow>
+                </DiagramGroup>
+              </div>
+            </DiagramContainer>
             <div className="nio-card-desc" style={{ marginBottom: 0 }}>
               1단계는 비동기적이지만 2단계는 블로킹입니다. <strong style={{ color: '#ef4444' }}>실무에서는 거의 사용되지 않습니다.</strong>
               시그널 핸들러 내에서 할 수 있는 작업이 제한적이고(async-signal-safe 함수만 호출 가능),
@@ -445,20 +513,33 @@ export default function NetworkIoModel() {
               커널이 <strong style={{ color: '#a855f7' }}>데이터 준비 + 유저 공간으로 복사까지 모두 완료</strong>한 후 알림(콜백/시그널/완료 큐)을 보냅니다.
               애플리케이션은 알림을 받으면 이미 유저 버퍼에 데이터가 있으므로 바로 사용할 수 있습니다.
             </div>
-            <div className="nio-diagram">{`  Application              Kernel
-      │                       │
-      │ aio_read(buf)         │
-      ├──────────────────────→│  즉시 반환!
-      │←── OK ────────────────┤
-      │                       │
-      │ (다른 작업 수행)        │  ① 데이터 준비
-      │ (완전히 자유!)          │  ② 데이터 복사 (커널→유저)
-      │                       │     커널이 알아서 buf에 채움
-      │                       │
-      │←── 완료 알림 ──────────┤  모든 작업 완료!
-      │                       │
-      │ buf 바로 사용          │  (이미 복사 완료)
-      ▼                       ▼`}</div>
+            <DiagramContainer title="Asynchronous I/O">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                <DiagramFlow>
+                  <DiagramNode label="Application" color="#a855f7" />
+                  <DiagramArrow label="aio_read(buf)" color="#a855f7" />
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                </DiagramFlow>
+                <DiagramFlow>
+                  <DiagramNode label="Kernel" color="#22c55e" />
+                  <DiagramArrow label="OK (즉시 반환!)" color="#22c55e" dashed />
+                  <DiagramNode label="Application" color="#a855f7" />
+                </DiagramFlow>
+                <div style={{ fontSize: '10px', color: '#22c55e', fontFamily: 'var(--mono)' }}>Application: 다른 작업 수행 (완전히 자유!)</div>
+                <DiagramGroup label="커널이 처리" color="#a855f7">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '4px' }}>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--mono)' }}>① 데이터 준비</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--mono)' }}>② 데이터 복사 (커널→유저) — 커널이 buf에 채움</div>
+                  </div>
+                </DiagramGroup>
+                <DiagramFlow>
+                  <DiagramNode label="Kernel" color="#a855f7" />
+                  <DiagramArrow label="완료 알림!" color="#22c55e" dashed />
+                  <DiagramNode label="Application" color="#a855f7" />
+                </DiagramFlow>
+                <div style={{ fontSize: '10px', color: '#22c55e', fontFamily: 'var(--mono)' }}>buf 바로 사용 (이미 복사 완료)</div>
+              </div>
+            </DiagramContainer>
             <div className="nio-card-desc">
               <strong style={{ color: '#a855f7' }}>진정한 비동기 I/O</strong>는 1단계, 2단계 모두 논블로킹입니다. 다른 4가지 모델과의 핵심 차이는
               <strong style={{ color: '#94a3b8' }}> 데이터 복사(2단계)까지 커널이 처리</strong>한다는 점입니다.
@@ -731,16 +812,21 @@ export default function NetworkIoModel() {
                 <strong style={{ color: '#3b82f6' }}>I/O 이벤트를 감지</strong>한 후, 해당 이벤트를 적절한 핸들러에 <strong style={{ color: '#94a3b8' }}>디스패치(dispatch)</strong>합니다.
                 이벤트 루프가 epoll/kqueue로 fd를 감시하고, 준비된 fd에 대해 <strong style={{ color: '#94a3b8' }}>read()를 직접 호출</strong>합니다.
               </div>
-              <div className="nio-diagram">{`  ┌─────────────────────────┐
-  │     Event Loop           │
-  │  (epoll_wait / kqueue)   │
-  └──────────┬───────────────┘
-             │ 이벤트 감지
-      ┌──────┼──────┐
-      ▼      ▼      ▼
-   Handler Handler Handler
-   read()  read()  read()
-   처리     처리     처리`}</div>
+              <DiagramContainer title="Reactor Pattern">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                  <DiagramNode icon="🔄" label="Event Loop" sub="(epoll_wait / kqueue)" color="#3b82f6" />
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <DiagramArrow vertical label="이벤트 감지" color="#3b82f6" />
+                    <DiagramArrow vertical label="이벤트 감지" color="#3b82f6" />
+                    <DiagramArrow vertical label="이벤트 감지" color="#3b82f6" />
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <DiagramNode label="Handler 1" sub="read() → 처리" color="#3b82f6" />
+                    <DiagramNode label="Handler 2" sub="read() → 처리" color="#3b82f6" />
+                    <DiagramNode label="Handler 3" sub="read() → 처리" color="#3b82f6" />
+                  </div>
+                </div>
+              </DiagramContainer>
               <div style={{ fontSize: '12px', color: '#5a6a85', marginBottom: '14px', lineHeight: 1.7 }}>
                 핵심: <strong style={{ color: '#3b82f6' }}>I/O 준비 완료를 감지 → 애플리케이션이 read()</strong> 호출.
                 1단계(감시)는 Reactor가, 2단계(read + 처리)는 핸들러가 담당합니다.
@@ -760,17 +846,21 @@ export default function NetworkIoModel() {
                 <strong style={{ color: '#a855f7' }}>비동기 I/O 작업을 시작</strong>한 후, <strong style={{ color: '#94a3b8' }}>커널이 모든 작업을 완료</strong>하면 알림을 받아 처리합니다.
                 애플리케이션은 read()를 호출하지 않고, 커널이 데이터를 유저 버퍼에 채운 후 콜백을 호출합니다.
               </div>
-              <div className="nio-diagram">{`  ┌─────────────────────────┐
-  │   Completion Handler     │
-  │  (완료 큐 / 콜백)        │
-  └──────────┬───────────────┘
-             │ 완료 알림
-      ┌──────┼──────┐
-      ▼      ▼      ▼
-   Handler Handler Handler
-   (이미    (이미    (이미
-   데이터   데이터   데이터
-   준비됨)  준비됨)  준비됨)`}</div>
+              <DiagramContainer title="Proactor Pattern">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                  <DiagramNode icon="✅" label="Completion Handler" sub="(완료 큐 / 콜백)" color="#a855f7" />
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <DiagramArrow vertical label="완료 알림" color="#a855f7" />
+                    <DiagramArrow vertical label="완료 알림" color="#a855f7" />
+                    <DiagramArrow vertical label="완료 알림" color="#a855f7" />
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <DiagramNode label="Handler 1" sub="(이미 데이터 준비됨)" color="#a855f7" />
+                    <DiagramNode label="Handler 2" sub="(이미 데이터 준비됨)" color="#a855f7" />
+                    <DiagramNode label="Handler 3" sub="(이미 데이터 준비됨)" color="#a855f7" />
+                  </div>
+                </div>
+              </DiagramContainer>
               <div style={{ fontSize: '12px', color: '#5a6a85', marginBottom: '14px', lineHeight: 1.7 }}>
                 핵심: <strong style={{ color: '#a855f7' }}>커널이 I/O 완료(준비+복사) → 애플리케이션에 통보.</strong>
                 애플리케이션은 데이터가 이미 유저 버퍼에 있으므로 바로 비즈니스 로직을 수행합니다.
