@@ -1,9 +1,20 @@
+export interface SubTab {
+  id: string
+  label: string
+}
+
+export interface TabGroup {
+  label: string
+  tabs: SubTab[]
+}
+
 export interface Topic {
   slug: string
   icon: string
   tag: string
   title: string
   desc: string
+  tabGroups: TabGroup[]
 }
 
 export interface Category {
@@ -31,6 +42,42 @@ export const CATEGORIES: Category[] = [
         tag: 'Network · HTTP · TCP · DNS',
         title: '네트워크',
         desc: 'HTTP 버전, HTTPS, 요청-응답 흐름, RESTful API, TCP/UDP, Handshake, DNS까지',
+        tabGroups: [
+          {
+            label: 'HTTP',
+            tabs: [
+              { id: 'http-overview', label: 'HTTP란?' },
+              { id: 'http-versions', label: 'HTTP 버전' },
+              { id: 'http-vs-https', label: 'HTTP vs HTTPS' },
+              { id: 'http-request-response', label: '요청-응답' },
+              { id: 'restful-api', label: 'RESTful API' },
+              { id: 'grpc-protobuf', label: 'gRPC & Protobuf' },
+            ],
+          },
+          {
+            label: 'TCP/IP',
+            tabs: [
+              { id: 'tcp-vs-udp', label: 'TCP vs UDP' },
+              { id: 'tcp-handshake', label: 'Handshake' },
+              { id: 'dns', label: 'DNS' },
+              { id: 'network-layer-model', label: 'OSI / TCP/IP 계층' },
+              { id: 'nat-ip', label: 'NAT & IP' },
+            ],
+          },
+          {
+            label: 'Infra',
+            tabs: [
+              { id: 'websocket-realtime', label: 'WebSocket' },
+              { id: 'proxy-cdn', label: 'Proxy & CDN' },
+              { id: 'api-gateway', label: 'API Gateway' },
+              { id: 'load-balancing', label: '로드밸런싱' },
+              { id: 'network-io-model', label: 'I/O 모델' },
+              { id: 'service-mesh', label: 'Service Mesh' },
+              { id: 'connection-pool', label: 'Connection Pool' },
+              { id: 'circuit-breaker-retry', label: 'CB & Retry' },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -48,6 +95,16 @@ export const CATEGORIES: Category[] = [
         tag: 'Auth · JWT · Session · CORS',
         title: '보안 & 인증',
         desc: 'JWT 구조와 인증 흐름, Session vs JWT 저장 전략, CORS 정책과 Preflight 요청',
+        tabGroups: [
+          {
+            label: 'Security',
+            tabs: [
+              { id: 'jwt-deep-dive', label: 'JWT' },
+              { id: 'session-jwt-storage', label: 'Session vs JWT 저장' },
+              { id: 'cors-deep-dive', label: 'CORS 심화' },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -65,6 +122,17 @@ export const CATEGORIES: Category[] = [
         tag: 'Kafka · Producer · Consumer · Partition',
         title: 'Apache Kafka',
         desc: 'Kafka 아키텍처, Partition & Replication, 전달 보장, Consumer Group, Connect & CDC',
+        tabGroups: [
+          {
+            label: 'Kafka',
+            tabs: [
+              { id: 'kafka-overview', label: 'Kafka 개요' },
+              { id: 'kafka-producer-consumer', label: 'Producer & Consumer' },
+              { id: 'kafka-delivery-patterns', label: '전달 보장 & 패턴' },
+              { id: 'kafka-connect-ops', label: 'Connect & 운영' },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -82,6 +150,15 @@ export const CATEGORIES: Category[] = [
         tag: 'Portfolio · Kafka · Batch · Migration',
         title: '포트폴리오 면접 준비',
         desc: '문서 전처리 서비스, 2억건+ 데이터 마이그레이션 프로젝트 기반 예상 질문과 답변 가이드',
+        tabGroups: [
+          {
+            label: '프로젝트',
+            tabs: [
+              { id: 'preprocessing', label: '문서 전처리 서비스' },
+              { id: 'migration', label: '데이터 마이그레이션' },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -94,4 +171,28 @@ export const ALL_TOPICS = CATEGORIES.flatMap((cat) =>
     categoryTitle: cat.title,
     categoryColor: cat.color,
   })),
+)
+
+export interface FlatTab {
+  tabId: string
+  label: string
+  topicSlug: string
+  topicTitle: string
+  categoryId: string
+  categoryColor: string
+}
+
+export const ALL_TABS: FlatTab[] = CATEGORIES.flatMap((cat) =>
+  cat.topics.flatMap((topic) =>
+    topic.tabGroups.flatMap((group) =>
+      group.tabs.map((tab) => ({
+        tabId: tab.id,
+        label: tab.label,
+        topicSlug: topic.slug,
+        topicTitle: topic.title,
+        categoryId: cat.id,
+        categoryColor: cat.color,
+      })),
+    ),
+  ),
 )
