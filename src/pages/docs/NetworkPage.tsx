@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import DocLayout from '../../components/DocLayout'
+import DocSkeleton from '../../components/DocSkeleton'
 import { useInjectCSS } from '../../hooks/useInjectCSS'
 
 const TAB_CSS = `
@@ -129,13 +130,7 @@ export default function NetworkPage() {
           </div>
         ))}
       </div>
-      <Suspense
-        fallback={
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--dim)', fontFamily: 'var(--mono)', fontSize: '13px' }}>
-            Loading...
-          </div>
-        }
-      >
+      <Suspense fallback={<DocSkeleton />}>
         <ActiveSection />
       </Suspense>
     </DocLayout>
