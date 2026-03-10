@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ALL_TOPICS } from '../data/categories'
 import { useProgress } from '../hooks/useProgress'
@@ -8,8 +9,16 @@ const LAYOUT_CSS = `
   position:sticky; top:0; z-index:50;
   display:flex; align-items:center; gap:12px;
   padding:10px 20px;
-  border-bottom:1px solid var(--border);
+  border-bottom:none;
   background:rgba(5,7,15,0.85); backdrop-filter:blur(12px);
+}
+.doc-progress-bar {
+  position:absolute; bottom:0; left:0; right:0;
+  height:2px; background:var(--border);
+}
+.doc-progress-fill {
+  height:100%; width:0%;
+  background:linear-gradient(90deg, #3b82f6, #a855f7);
 }
 .doc-layout-header-back {
   flex-shrink:0; display:flex; align-items:center; gap:6px;
@@ -64,7 +73,18 @@ export default function DocLayout({ slug, children }: DocLayoutProps) {
   const navigate = useNavigate()
   const { isReviewed, toggleReviewed } = useProgress()
   const reviewed = isReviewed(slug)
+  const [progress, setProgress] = useState(0)
   useInjectCSS('style-doc-layout', LAYOUT_CSS)
+
+  useEffect(() => {
+    const onScroll = () => {
+      const scrollTop = window.scrollY
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+      setProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const currentIndex = ALL_TOPICS.findIndex((t) => t.slug === slug)
   const prevTopic = currentIndex > 0 ? ALL_TOPICS[currentIndex - 1] : null
@@ -97,6 +117,10 @@ export default function DocLayout({ slug, children }: DocLayoutProps) {
         >
           {reviewed ? '✓ 완료' : '완료 표시'}
         </button>
+        {/* 스크롤 프로그래스 바 */}
+        <div className="doc-progress-bar">
+          <div className="doc-progress-fill" style={{ width: `${progress}%` }} />
+        </div>
       </header>
 
       {/* 페이지 콘텐츠 */}
