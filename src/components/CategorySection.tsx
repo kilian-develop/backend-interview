@@ -1,3 +1,5 @@
+import { motion } from 'framer-motion'
+import { useInView } from 'react-intersection-observer'
 import type { Category } from '../data/categories'
 import TopicCard from './TopicCard'
 
@@ -12,10 +14,18 @@ export default function CategorySection({
   isReviewed,
   onToggleReviewed,
 }: CategorySectionProps) {
+  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.05 })
+
   if (category.topics.length === 0) return null
 
   return (
-    <div style={{ marginBottom: '56px' }}>
+    <motion.div
+      ref={ref}
+      style={{ marginBottom: '56px' }}
+      initial={{ opacity: 0, y: 32 }}
+      animate={inView ? { opacity: 1, y: 0 } : undefined}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+    >
       <div
         style={{
           display: 'flex',
@@ -58,18 +68,24 @@ export default function CategorySection({
           gap: '14px',
         }}
       >
-        {category.topics.map((topic) => (
-          <TopicCard
+        {category.topics.map((topic, i) => (
+          <motion.div
             key={topic.slug}
-            topic={topic}
-            color={category.color}
-            glow={category.glow}
-            dim={category.dim}
-            isReviewed={isReviewed(topic.slug)}
-            onToggleReviewed={onToggleReviewed}
-          />
+            initial={{ opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : undefined}
+            transition={{ duration: 0.4, delay: i * 0.05, ease: 'easeOut' }}
+          >
+            <TopicCard
+              topic={topic}
+              color={category.color}
+              glow={category.glow}
+              dim={category.dim}
+              isReviewed={isReviewed(topic.slug)}
+              onToggleReviewed={onToggleReviewed}
+            />
+          </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   )
 }

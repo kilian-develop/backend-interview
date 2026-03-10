@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import DocLayout from './DocLayout'
 import DocSkeleton from './DocSkeleton'
 import { useInjectCSS } from '../hooks/useInjectCSS'
@@ -6,7 +7,7 @@ import { useInjectCSS } from '../hooks/useInjectCSS'
 interface Tab {
   id: string
   label: string
-  icon: string
+  icon: React.ReactNode
 }
 
 interface TabGroup {
@@ -88,9 +89,19 @@ export default function TabPage({ slug, accentColor, sections, tabGroups, defaul
           </div>
         ))}
       </div>
-      <Suspense fallback={<DocSkeleton />}>
-        <ActiveSection />
-      </Suspense>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
+          <Suspense fallback={<DocSkeleton />}>
+            <ActiveSection />
+          </Suspense>
+        </motion.div>
+      </AnimatePresence>
     </DocLayout>
   )
 }

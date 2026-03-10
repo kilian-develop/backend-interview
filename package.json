@@ -9,12 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
+    "framer-motion": "^12.35.2",
     "fuse.js": "^7.0.0",
+    "lucide-react": "^0.577.0",
     "prism-react-renderer": "^2.4.1",
     "prismjs": "^1.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-intersection-observer": "^10.0.3",
+    "react-router-dom": "^6.28.0",
+    "sonner": "^2.0.7"
   },
   "devDependencies": {
     "@types/prismjs": "^1.26.6",

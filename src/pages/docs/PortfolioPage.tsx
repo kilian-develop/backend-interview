@@ -1,4 +1,5 @@
 import { lazy } from 'react'
+import { ClipboardList, ArrowRightLeft } from 'lucide-react'
 import TabPage from '../../components/TabPage'
 
 const sections = {
@@ -10,8 +11,8 @@ const tabGroups = [
   {
     label: '프로젝트',
     tabs: [
-      { id: 'preprocessing', label: '문서 전처리 서비스', icon: '📋' },
-      { id: 'migration', label: '데이터 마이그레이션', icon: '🔄' },
+      { id: 'preprocessing', label: '문서 전처리 서비스', icon: <ClipboardList size={14} /> },
+      { id: 'migration', label: '데이터 마이그레이션', icon: <ArrowRightLeft size={14} /> },
     ],
   },
 ]

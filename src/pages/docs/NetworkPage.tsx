@@ -1,5 +1,8 @@
 import { lazy } from 'react'
+import { Globe, FileText, Lock, ArrowLeftRight, Target, Zap, Scale, Handshake, MapPin, Layers, Hash, Plug, Globe2, DoorOpen, RefreshCw, Network, Link, ShieldAlert } from 'lucide-react'
 import TabPage from '../../components/TabPage'
+
+const I = 14
 
 const sections = {
   'http-overview': lazy(() => import('./HttpOverview')),
@@ -27,35 +30,35 @@ const tabGroups = [
   {
     label: 'HTTP',
     tabs: [
-      { id: 'http-overview', label: 'HTTP란?', icon: '📡' },
-      { id: 'http-versions', label: 'HTTP 버전', icon: '📄' },
-      { id: 'http-vs-https', label: 'HTTP vs HTTPS', icon: '🔒' },
-      { id: 'http-request-response', label: '요청-응답', icon: '🔄' },
-      { id: 'restful-api', label: 'RESTful API', icon: '🎯' },
-      { id: 'grpc-protobuf', label: 'gRPC & Protobuf', icon: '⚡' },
+      { id: 'http-overview', label: 'HTTP란?', icon: <Globe size={I} /> },
+      { id: 'http-versions', label: 'HTTP 버전', icon: <FileText size={I} /> },
+      { id: 'http-vs-https', label: 'HTTP vs HTTPS', icon: <Lock size={I} /> },
+      { id: 'http-request-response', label: '요청-응답', icon: <ArrowLeftRight size={I} /> },
+      { id: 'restful-api', label: 'RESTful API', icon: <Target size={I} /> },
+      { id: 'grpc-protobuf', label: 'gRPC & Protobuf', icon: <Zap size={I} /> },
     ],
   },
   {
     label: 'TCP/IP',
     tabs: [
-      { id: 'tcp-vs-udp', label: 'TCP vs UDP', icon: '⚖️' },
-      { id: 'tcp-handshake', label: 'Handshake', icon: '🤝' },
-      { id: 'dns', label: 'DNS', icon: '📍' },
-      { id: 'network-layer-model', label: 'OSI / TCP/IP 계층', icon: '🏗️' },
-      { id: 'nat-ip', label: 'NAT & IP', icon: '🔢' },
+      { id: 'tcp-vs-udp', label: 'TCP vs UDP', icon: <Scale size={I} /> },
+      { id: 'tcp-handshake', label: 'Handshake', icon: <Handshake size={I} /> },
+      { id: 'dns', label: 'DNS', icon: <MapPin size={I} /> },
+      { id: 'network-layer-model', label: 'OSI / TCP/IP 계층', icon: <Layers size={I} /> },
+      { id: 'nat-ip', label: 'NAT & IP', icon: <Hash size={I} /> },
     ],
   },
   {
     label: 'Infra',
     tabs: [
-      { id: 'websocket-realtime', label: 'WebSocket', icon: '🔌' },
-      { id: 'proxy-cdn', label: 'Proxy & CDN', icon: '🌐' },
-      { id: 'api-gateway', label: 'API Gateway', icon: '🚪' },
-      { id: 'load-balancing', label: '로드밸런싱', icon: '⚖️' },
-      { id: 'network-io-model', label: 'I/O 모델', icon: '🔄' },
-      { id: 'service-mesh', label: 'Service Mesh', icon: '🕸️' },
-      { id: 'connection-pool', label: 'Connection Pool', icon: '🔗' },
-      { id: 'circuit-breaker-retry', label: 'CB & Retry', icon: '🔌' },
+      { id: 'websocket-realtime', label: 'WebSocket', icon: <Plug size={I} /> },
+      { id: 'proxy-cdn', label: 'Proxy & CDN', icon: <Globe2 size={I} /> },
+      { id: 'api-gateway', label: 'API Gateway', icon: <DoorOpen size={I} /> },
+      { id: 'load-balancing', label: '로드밸런싱', icon: <Scale size={I} /> },
+      { id: 'network-io-model', label: 'I/O 모델', icon: <RefreshCw size={I} /> },
+      { id: 'service-mesh', label: 'Service Mesh', icon: <Network size={I} /> },
+      { id: 'connection-pool', label: 'Connection Pool', icon: <Link size={I} /> },
+      { id: 'circuit-breaker-retry', label: 'CB & Retry', icon: <ShieldAlert size={I} /> },
     ],
   },
 ]

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import Fuse from 'fuse.js'
 import { CATEGORIES, ALL_TOPICS } from '../data/categories'
 import CategorySection from '../components/CategorySection'
@@ -73,7 +74,10 @@ export default function HomePage() {
       >
         {/* Hero */}
         <header style={{ textAlign: 'center', marginBottom: '64px' }}>
-          <p
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
             style={{
               fontFamily: 'var(--mono)',
               fontSize: '10px',
@@ -84,8 +88,11 @@ export default function HomePage() {
             }}
           >
             Interview Prep · 2026
-          </p>
-          <h1
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             style={{
               fontSize: 'clamp(28px, 5.5vw, 52px)',
               fontWeight: 900,
@@ -105,8 +112,11 @@ export default function HomePage() {
             >
               면접 준비 가이드
             </span>
-          </h1>
-          <p
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.25 }}
             style={{
               fontSize: '14px',
               color: 'var(--dim)',
@@ -118,7 +128,7 @@ export default function HomePage() {
             핵심 개념을 카테고리별로 정리했습니다.
             <br />
             주제를 클릭해 상세 내용을 학습하세요.
-          </p>
+          </motion.p>
         </header>
 
         {/* 검색 */}
