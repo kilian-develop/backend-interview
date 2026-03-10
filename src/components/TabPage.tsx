@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import DocLayout from './DocLayout'
 import DocSkeleton from './DocSkeleton'
+import TableOfContents from './doc/TableOfContents'
+import ScrollToTopButton from './doc/ScrollToTopButton'
 import { useInjectCSS } from '../hooks/useInjectCSS'
 
 interface Tab {
@@ -102,6 +104,8 @@ export default function TabPage({ slug, accentColor, sections, tabGroups, defaul
           </Suspense>
         </motion.div>
       </AnimatePresence>
+      <TableOfContents accentColor={accentColor} activeTab={activeTab} />
+      <ScrollToTopButton />
     </DocLayout>
   )
 }

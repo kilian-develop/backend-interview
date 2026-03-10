@@ -43,6 +43,7 @@
   align-items: center;
   gap: 10px;
   color: #cbd5e1;
+  scroll-margin-top: 64px;
 }
 .doc-sec-title::before {
   content: '';
