@@ -143,11 +143,13 @@ export default function TableOfContents({ accentColor, activeTab }: Props) {
 
   useInjectCSS('style-toc', CSS)
 
-  // Re-scan sections when tab changes, using MutationObserver for reliability
+  // Re-scan sections when tab changes, debounced to wait for AnimatePresence exit
   useEffect(() => {
     setIsOpen(false)
     setItems([])
     setActiveId('')
+
+    let debounceTimer: number
 
     const scan = () => {
       const els = document.querySelectorAll('.doc-sec-title[id]')
@@ -155,25 +157,31 @@ export default function TableOfContents({ accentColor, activeTab }: Props) {
       els.forEach((el) => {
         if (el.id) next.push({ id: el.id, text: el.textContent?.trim() || '' })
       })
-      if (next.length > 0) setItems(next)
-      return next.length > 0
+      if (next.length > 0) {
+        setItems(next)
+        observer.disconnect()
+      }
     }
 
-    // 이미 렌더링된 경우 즉시 반영
-    if (scan()) return
+    const debouncedScan = () => {
+      clearTimeout(debounceTimer)
+      debounceTimer = window.setTimeout(scan, 350)
+    }
 
-    // lazy 로딩 대기: DOM 변경 감지
-    const observer = new MutationObserver(() => {
-      if (scan()) observer.disconnect()
-    })
+    // DOM 변경 감지 (lazy 로딩 + 탭 전환 모두 대응)
+    const observer = new MutationObserver(debouncedScan)
     observer.observe(document.body, { childList: true, subtree: true })
 
+    // 초기 디바운스 스캔
+    debouncedScan()
+
     // 안전장치: 10초 후 옵저버 정리
-    const timeout = setTimeout(() => observer.disconnect(), 10_000)
+    const safetyTimeout = setTimeout(() => observer.disconnect(), 10_000)
 
     return () => {
       observer.disconnect()
-      clearTimeout(timeout)
+      clearTimeout(debounceTimer)
+      clearTimeout(safetyTimeout)
     }
   }, [activeTab])
 
