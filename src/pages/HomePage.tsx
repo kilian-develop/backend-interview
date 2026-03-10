@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import Fuse from 'fuse.js'
-import { CATEGORIES, ALL_TOPICS, ALL_TABS, type FlatTab } from '../data/categories'
+import { CATEGORIES, ALL_TOPICS, ALL_TABS } from '../data/categories'
 import SearchBar from '../components/SearchBar'
 import { useProgress } from '../hooks/useProgress'
 
@@ -13,7 +13,6 @@ const tabFuse = new Fuse(ALL_TABS, {
 })
 
 export default function HomePage() {
-  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const { isReviewed, toggleReviewed, reviewedCount } = useProgress()
