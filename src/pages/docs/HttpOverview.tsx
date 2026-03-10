@@ -820,11 +820,11 @@ Content-Type: image/png
               <thead>
                 <tr>
                   <th>항목</th>
-                  <th style={{ color: '#22c55e' }}>GET</th>
-                  <th style={{ color: '#3b82f6' }}>POST</th>
-                  <th style={{ color: '#a855f7' }}>PUT</th>
-                  <th style={{ color: '#f59e0b' }}>PATCH</th>
-                  <th style={{ color: '#ef4444' }}>DELETE</th>
+                  <th style={{ color: '#22c55e', textAlign: 'center' }}>GET</th>
+                  <th style={{ color: '#3b82f6', textAlign: 'center' }}>POST</th>
+                  <th style={{ color: '#a855f7', textAlign: 'center' }}>PUT</th>
+                  <th style={{ color: '#f59e0b', textAlign: 'center' }}>PATCH</th>
+                  <th style={{ color: '#ef4444', textAlign: 'center' }}>DELETE</th>
                 </tr>
               </thead>
               <tbody>

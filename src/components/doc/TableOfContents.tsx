@@ -166,6 +166,12 @@ export default function TableOfContents({ accentColor, activeTab }: Props) {
     if (items.length === 0) return
 
     const onScroll = () => {
+      // 페이지 하단 도달 시 마지막 항목 활성화
+      const atBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 60
+      if (atBottom) {
+        setActiveId(items[items.length - 1].id)
+        return
+      }
       let current = items[0]?.id || ''
       for (const item of items) {
         const el = document.getElementById(item.id)
