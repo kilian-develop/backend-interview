@@ -160,6 +160,7 @@ export const CATEGORIES: Category[] = [
               { id: 'lock-concurrency', label: '락 & 동시성 제어' },
               { id: 'sql-query-optimization', label: 'SQL 쿼리 최적화' },
               { id: 'db-replication-sharding', label: '레플리케이션 & 샤딩' },
+              { id: 'connection-pool-tuning', label: '커넥션 풀 & DB 튜닝' },
             ],
           },
         ],
