@@ -1,10 +1,21 @@
-import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Toaster } from 'sonner'
+import NProgress from 'nprogress'
 import ScrollToTop from './components/ScrollToTop'
 import HomePage from './pages/HomePage'
 import DocSkeleton from './components/DocSkeleton'
+
+/** Suspense 내부에서 렌더링되어, lazy 컴포넌트 로드 완료 후 NProgress를 종료 */
+function ProgressDone() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    NProgress.done()
+  }, [pathname])
+  return null
+}
 
 const NetworkPage = lazy(() => import('./pages/docs/NetworkPage'))
 const SecurityPage = lazy(() => import('./pages/docs/SecurityPage'))
@@ -17,6 +28,7 @@ export default function App() {
     <>
       <ScrollToTop />
       <Suspense fallback={<DocSkeleton />}>
+        <ProgressDone />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/docs/network" element={<NetworkPage />} />
@@ -40,6 +52,7 @@ export default function App() {
         }}
       />
       <Analytics />
+      <SpeedInsights />
     </>
   )
 }

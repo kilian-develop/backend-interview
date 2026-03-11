@@ -1,7 +1,7 @@
-import { useInjectCSS } from '../../hooks/useInjectCSS'
+import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Highlight, themes } from 'prism-react-renderer'
-import '../../lib/prism-languages'
+import { getHighlighter } from '../../lib/shiki'
+import { useInjectCSS } from '../../hooks/useInjectCSS'
 
 const CODE_BLOCK_CSS = `
 .cb-wrapper { margin:12px 0; border-radius:10px; overflow:hidden; border:1px solid #1a2234; background:#0a0d14; }
@@ -10,9 +10,13 @@ const CODE_BLOCK_CSS = `
 .cb-lang { font-size:9px; font-weight:600; padding:2px 8px; border-radius:4px; font-family:var(--mono); }
 .cb-pre { margin:0; padding:16px 18px; overflow-x:auto; background:transparent !important; }
 .cb-pre code { font-family:var(--mono); font-size:11px; line-height:1.8; }
+.cb-shiki pre { margin:0; padding:16px 18px; overflow-x:auto; background:transparent !important; }
+.cb-shiki code { font-family:var(--mono); font-size:11px; line-height:1.8; }
 @media (max-width:480px) {
   .cb-pre { padding:12px 14px; }
   .cb-pre code { font-size:10px; line-height:1.7; }
+  .cb-shiki pre { padding:12px 14px; }
+  .cb-shiki code { font-size:10px; line-height:1.7; }
   .cb-header { padding:6px 12px; }
 }
 `
@@ -31,22 +35,25 @@ const LANG_COLORS: Record<string, { bg: string; color: string }> = {
   comparison: { bg: 'rgba(148,163,184,0.12)', color: '#64748b' },
 }
 
-// prism-react-renderer가 지원하는 언어명으로 매핑
+// shiki가 지원하는 언어명으로 매핑
 const LANG_MAP: Record<string, string> = {
   java: 'java',
   yaml: 'yaml',
   json: 'json',
-  http: 'markup',
+  http: 'http',
   sql: 'sql',
-  proto: 'protobuf',
-  protobuf: 'protobuf',
+  proto: 'proto',
+  protobuf: 'proto',
   ini: 'ini',
   bash: 'bash',
   shell: 'bash',
-  xml: 'markup',
-  html: 'markup',
-  comparison: 'markup',
+  xml: 'xml',
+  html: 'html',
+  comparison: 'text',
 }
+
+// 하이라이팅 결과 캐시 (동일 코드 재렌더링 방지)
+const htmlCache = new Map<string, string>()
 
 export function CodeBlock({ title, lang, children, style }: {
   title?: string; lang?: string; children: ReactNode; style?: CSSProperties
@@ -56,8 +63,37 @@ export function CodeBlock({ title, lang, children, style }: {
   const hasHeader = title || lang
   const langKey = lang?.toLowerCase() ?? ''
   const langStyle = LANG_COLORS[langKey] ?? { bg: '#1a2234', color: '#475569' }
-  const prismLang = LANG_MAP[langKey] || 'markup'
+  const shikiLang = LANG_MAP[langKey] || 'text'
   const code = typeof children === 'string' ? children.replace(/\n$/, '') : ''
+
+  const [html, setHtml] = useState<string | null>(() => {
+    const cacheKey = `${shikiLang}:${code}`
+    return htmlCache.get(cacheKey) ?? null
+  })
+
+  useEffect(() => {
+    if (typeof children !== 'string' || !code) return
+
+    const cacheKey = `${shikiLang}:${code}`
+    const cached = htmlCache.get(cacheKey)
+    if (cached) {
+      setHtml(cached)
+      return
+    }
+
+    let cancelled = false
+    getHighlighter().then((highlighter) => {
+      if (cancelled) return
+      const result = highlighter.codeToHtml(code, {
+        lang: shikiLang,
+        theme: 'github-dark-default',
+      })
+      htmlCache.set(cacheKey, result)
+      setHtml(result)
+    })
+
+    return () => { cancelled = true }
+  }, [code, shikiLang, children])
 
   return (
     <div className="cb-wrapper" style={style}>
@@ -68,21 +104,13 @@ export function CodeBlock({ title, lang, children, style }: {
         </div>
       )}
       {typeof children === 'string' ? (
-        <Highlight theme={themes.nightOwl} code={code} language={prismLang}>
-          {({ tokens, getLineProps, getTokenProps }) => (
-            <pre className="cb-pre">
-              <code>
-                {tokens.map((line, i) => (
-                  <div key={i} {...getLineProps({ line })}>
-                    {line.map((token, j) => (
-                      <span key={j} {...getTokenProps({ token })} />
-                    ))}
-                  </div>
-                ))}
-              </code>
-            </pre>
-          )}
-        </Highlight>
+        html ? (
+          <div className="cb-shiki" dangerouslySetInnerHTML={{ __html: html }} />
+        ) : (
+          <pre className="cb-pre">
+            <code style={{ color: '#94a3b8', whiteSpace: 'pre' }}>{code}</code>
+          </pre>
+        )
       ) : (
         <pre className="cb-pre"><code style={{ color: '#94a3b8', whiteSpace: 'pre' }}>{children}</code></pre>
       )}

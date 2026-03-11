@@ -33,6 +33,16 @@ input::placeholder {
   color: var(--muted);
 }
 
+/* nprogress 커스터마이징 */
+#nprogress .bar {
+  background: linear-gradient(90deg, #3b82f6, #a855f7);
+  height: 2px;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #3b82f6, 0 0 5px #3b82f6;
+}
+
 /* 모바일 반응형 */
 @media (max-width: 480px) {
   .stats-row .stats-divider {

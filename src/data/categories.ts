@@ -158,12 +158,22 @@ export const CATEGORIES: Category[] = [
               { id: 'index-deep-dive', label: '인덱스 심화' },
               { id: 'transaction-deep-dive', label: '트랜잭션 심화' },
               { id: 'lock-concurrency', label: '락 & 동시성 제어' },
+            ],
+          },
+          {
+            label: '쿼리 & 성능',
+            tabs: [
               { id: 'sql-query-optimization', label: 'SQL 쿼리 최적화' },
-              { id: 'db-replication-sharding', label: '레플리케이션 & 샤딩' },
-              { id: 'connection-pool-tuning', label: '커넥션 풀 & DB 튜닝' },
-              { id: 'paging-bulk-data', label: '페이징 & 대량 데이터' },
-              { id: 'db-migration-schema', label: 'DB 마이그레이션' },
               { id: 'query-plan-optimizer', label: '실행 계획 & 옵티마이저' },
+              { id: 'paging-bulk-data', label: '페이징 & 대량 데이터' },
+            ],
+          },
+          {
+            label: '운영 & 아키텍처',
+            tabs: [
+              { id: 'connection-pool-tuning', label: '커넥션 풀 & DB 튜닝' },
+              { id: 'db-replication-sharding', label: '레플리케이션 & 샤딩' },
+              { id: 'db-migration-schema', label: 'DB 마이그레이션' },
             ],
           },
         ],

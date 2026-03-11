@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { ALL_TOPICS } from '../data/categories'
-import { useProgress } from '../hooks/useProgress'
+import { useProgressStore } from '../stores/useProgressStore'
 import { useInjectCSS } from '../hooks/useInjectCSS'
 
 const LAYOUT_CSS = `
@@ -71,7 +72,7 @@ interface DocLayoutProps {
 
 export default function DocLayout({ slug, children }: DocLayoutProps) {
   const navigate = useNavigate()
-  const { isReviewed, toggleReviewed } = useProgress()
+  const { isReviewed, toggleReviewed } = useProgressStore()
   const reviewed = isReviewed(slug)
   const [progress, setProgress] = useState(0)
   useInjectCSS('style-doc-layout', LAYOUT_CSS)
@@ -93,6 +94,10 @@ export default function DocLayout({ slug, children }: DocLayoutProps) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
+      <Helmet>
+        <title>{current?.title ?? '면접 준비'} | 면접 준비 가이드</title>
+        <meta name="description" content={current?.desc ?? ''} />
+      </Helmet>
       {/* 상단 네비게이션 */}
       <header className="doc-layout-header">
         <button

@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import Fuse from 'fuse.js'
 import { CATEGORIES, ALL_TOPICS, ALL_TABS } from '../data/categories'
 import SearchBar from '../components/SearchBar'
-import { useProgress } from '../hooks/useProgress'
+import { useProgressStore } from '../stores/useProgressStore'
 
 const tabFuse = new Fuse(ALL_TABS, {
   keys: ['label', 'tabId', 'topicTitle'],
@@ -15,7 +16,7 @@ const tabFuse = new Fuse(ALL_TABS, {
 export default function HomePage() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const { isReviewed, toggleReviewed, reviewedCount } = useProgress()
+  const { isReviewed, toggleReviewed, reviewedCount } = useProgressStore()
 
   const totalTopics = ALL_TOPICS.length
 
@@ -52,6 +53,10 @@ export default function HomePage() {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
+      <Helmet>
+        <title>백엔드 개발자 면접 준비 가이드</title>
+        <meta name="description" content="네트워크, 보안, Kafka, 데이터베이스 등 백엔드 개발자 면접 핵심 개념 정리" />
+      </Helmet>
       {/* 배경 그리드 */}
       <div
         style={{
@@ -198,7 +203,7 @@ export default function HomePage() {
           <div style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border)' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 'clamp(18px, 4vw, 26px)', fontWeight: 700, color: '#22c55e' }}>
-              {reviewedCount}
+              {reviewedCount()}
             </span>
             <span style={{ fontSize: '11px', letterSpacing: '1px', color: 'var(--muted)' }}>완료한 주제</span>
           </div>
