@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Database, Search, GitBranch, Lock, Gauge } from 'lucide-react'
+import { Database, Search, GitBranch, Lock, Gauge, Copy } from 'lucide-react'
 import TabPage from '../../components/TabPage'
 
 const I = 14
@@ -10,6 +10,7 @@ const sections = {
   'transaction-deep-dive': lazy(() => import('./TransactionDeepDive')),
   'lock-concurrency': lazy(() => import('./LockConcurrency')),
   'sql-query-optimization': lazy(() => import('./SqlQueryOptimization')),
+  'db-replication-sharding': lazy(() => import('./DbReplicationSharding')),
 }
 
 const tabGroups = [
@@ -21,6 +22,7 @@ const tabGroups = [
       { id: 'transaction-deep-dive', label: '트랜잭션 심화', icon: <GitBranch size={I} /> },
       { id: 'lock-concurrency', label: '락 & 동시성 제어', icon: <Lock size={I} /> },
       { id: 'sql-query-optimization', label: 'SQL 쿼리 최적화', icon: <Gauge size={I} /> },
+      { id: 'db-replication-sharding', label: '레플리케이션 & 샤딩', icon: <Copy size={I} /> },
     ],
   },
 ]
