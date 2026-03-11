@@ -163,6 +163,7 @@ export const CATEGORIES: Category[] = [
               { id: 'connection-pool-tuning', label: '커넥션 풀 & DB 튜닝' },
               { id: 'paging-bulk-data', label: '페이징 & 대량 데이터' },
               { id: 'db-migration-schema', label: 'DB 마이그레이션' },
+              { id: 'query-plan-optimizer', label: '실행 계획 & 옵티마이저' },
             ],
           },
         ],

@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Database, Search, GitBranch, Lock, Gauge, Copy, Plug, Layers, ArrowRightLeft } from 'lucide-react'
+import { Database, Search, GitBranch, Lock, Gauge, Copy, Plug, Layers, ArrowRightLeft, ScanSearch } from 'lucide-react'
 import TabPage from '../../components/TabPage'
 
 const I = 14
@@ -14,6 +14,7 @@ const sections = {
   'connection-pool-tuning': lazy(() => import('./ConnectionPoolTuning')),
   'paging-bulk-data': lazy(() => import('./PagingBulkData')),
   'db-migration-schema': lazy(() => import('./DbMigrationSchema')),
+  'query-plan-optimizer': lazy(() => import('./QueryPlanOptimizer')),
 }
 
 const tabGroups = [
@@ -29,6 +30,7 @@ const tabGroups = [
       { id: 'connection-pool-tuning', label: '커넥션 풀 & DB 튜닝', icon: <Plug size={I} /> },
       { id: 'paging-bulk-data', label: '페이징 & 대량 데이터', icon: <Layers size={I} /> },
       { id: 'db-migration-schema', label: 'DB 마이그레이션', icon: <ArrowRightLeft size={I} /> },
+      { id: 'query-plan-optimizer', label: '실행 계획 & 옵티마이저', icon: <ScanSearch size={I} /> },
     ],
   },
 ]
