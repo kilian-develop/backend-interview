@@ -9,6 +9,7 @@ const PAGE_IMPORTS: Record<string, () => Promise<unknown>> = {
   security: () => import('../pages/docs/SecurityPage'),
   kafka: () => import('../pages/docs/KafkaPage'),
   portfolio: () => import('../pages/docs/PortfolioPage'),
+  database: () => import('../pages/docs/DatabasePage'),
 }
 
 const prefetched = new Set<string>()

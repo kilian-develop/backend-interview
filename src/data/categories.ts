@@ -137,6 +137,35 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'database',
+    label: 'Database',
+    title: '데이터베이스',
+    color: '#06b6d4',
+    glow: 'rgba(6,182,212,0.22)',
+    dim: 'rgba(6,182,212,0.08)',
+    topics: [
+      {
+        slug: 'database',
+        icon: '🗄️',
+        tag: 'RDBMS · SQL · Index · Transaction',
+        title: '데이터베이스',
+        desc: 'RDBMS 핵심 개념, 인덱스, 트랜잭션, 정규화, 쿼리 최적화, 락과 동시성 제어',
+        tabGroups: [
+          {
+            label: '기본 개념',
+            tabs: [
+              { id: 'rdbms-overview', label: 'RDBMS 개요' },
+              { id: 'index-deep-dive', label: '인덱스 심화' },
+              { id: 'transaction-deep-dive', label: '트랜잭션 심화' },
+              { id: 'lock-concurrency', label: '락 & 동시성 제어' },
+              { id: 'sql-query-optimization', label: 'SQL 쿼리 최적화' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'portfolio',
     label: 'Portfolio',
     title: '포트폴리오 면접',
