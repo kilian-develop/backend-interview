@@ -6,8 +6,8 @@ const CSS = `
   position: fixed;
   right: 24px;
   bottom: 24px;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: rgba(10,14,26,0.92);
@@ -33,7 +33,7 @@ const CSS = `
   color: var(--text);
 }
 @media (max-width: 480px) {
-  .scroll-top-btn { right: 16px; bottom: 16px; width: 38px; height: 38px; }
+  .scroll-top-btn { right: 16px; bottom: 16px; width: 44px; height: 44px; }
 }
 `
 

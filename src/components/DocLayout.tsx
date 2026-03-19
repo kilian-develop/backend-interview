@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { ALL_TOPICS } from '../data/categories'
+import { ALL_TOPICS, ALL_TABS } from '../data/categories'
 import { useProgressStore } from '../stores/useProgressStore'
-
-/* CSS는 doc-shared.css로 이동됨 — 런타임 주입 제거 */
 
 interface DocLayoutProps {
   slug: string
@@ -29,10 +27,31 @@ export default function DocLayout({ slug, activeTab, children }: DocLayoutProps)
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const currentIndex = ALL_TOPICS.findIndex((t) => t.slug === slug)
-  const prevTopic = currentIndex > 0 ? ALL_TOPICS[currentIndex - 1] : null
-  const nextTopic = currentIndex < ALL_TOPICS.length - 1 ? ALL_TOPICS[currentIndex + 1] : null
-  const current = ALL_TOPICS[currentIndex]
+  const current = ALL_TOPICS.find((t) => t.slug === slug)
+
+  /* ── 탭 단위 이전/다음 계산 ── */
+  const { prevTab, nextTab, tabIndex, tabTotal } = useMemo(() => {
+    const currentIdx = ALL_TABS.findIndex(
+      (t) => t.topicSlug === slug && t.tabId === activeTab,
+    )
+    return {
+      prevTab: currentIdx > 0 ? ALL_TABS[currentIdx - 1] : null,
+      nextTab: currentIdx < ALL_TABS.length - 1 ? ALL_TABS[currentIdx + 1] : null,
+      tabIndex: currentIdx,
+      tabTotal: ALL_TABS.length,
+    }
+  }, [slug, activeTab])
+
+  const goToTab = (tab: typeof ALL_TABS[number]) => {
+    if (tab.topicSlug === slug) {
+      /* 같은 카테고리 → 해시만 변경 (페이지 전환 없음) */
+      window.location.hash = tab.tabId
+    } else {
+      /* 다른 카테고리 → 라우트 이동 */
+      navigate(`/docs/${tab.topicSlug}#${tab.tabId}`)
+    }
+    window.scrollTo({ top: 0 })
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
@@ -58,8 +77,8 @@ export default function DocLayout({ slug, activeTab, children }: DocLayoutProps)
             className="doc-layout-header-done"
             onClick={() => toggleTab(slug, activeTab)}
             style={{
-              border: `1px solid ${reviewed ? 'rgba(34,197,94,0.4)' : 'var(--card-border)'}`,
-              background: reviewed ? 'rgba(34,197,94,0.12)' : 'var(--surface)',
+              border: `1px solid ${reviewed ? 'var(--color-green-border-strong)' : 'var(--card-border)'}`,
+              background: reviewed ? 'var(--color-green-bg-strong)' : 'var(--surface)',
               color: reviewed ? 'var(--color-green)' : 'var(--dim)',
             }}
           >
@@ -76,21 +95,21 @@ export default function DocLayout({ slug, activeTab, children }: DocLayoutProps)
 
       <footer className="doc-layout-footer">
         <div style={{ flex: 1, minWidth: 0 }}>
-          {prevTopic && (
-            <button className="doc-layout-footer-btn" onClick={() => navigate(`/docs/${prevTopic.slug}`)}>
-              ← {prevTopic.title}
+          {prevTab && (
+            <button className="doc-layout-footer-btn" onClick={() => goToTab(prevTab)}>
+              ← {prevTab.label}
             </button>
           )}
         </div>
 
         <span style={{ flexShrink: 0, fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--muted)' }}>
-          {currentIndex + 1} / {ALL_TOPICS.length}
+          {tabIndex + 1} / {tabTotal}
         </span>
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
-          {nextTopic && (
-            <button className="doc-layout-footer-btn" onClick={() => navigate(`/docs/${nextTopic.slug}`)}>
-              {nextTopic.title} →
+          {nextTab && (
+            <button className="doc-layout-footer-btn" onClick={() => goToTab(nextTab)}>
+              {nextTab.label} →
             </button>
           )}
         </div>

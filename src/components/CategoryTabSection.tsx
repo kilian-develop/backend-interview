@@ -50,8 +50,8 @@ export default function CategoryTabSection({
           style={{
             padding: '4px 12px', borderRadius: '6px', fontSize: '11px',
             fontFamily: 'var(--mono)', cursor: 'pointer', transition: 'all .2s',
-            border: `1px solid ${isCategoryComplete ? 'rgba(34,197,94,0.4)' : 'var(--border)'}`,
-            background: isCategoryComplete ? 'rgba(34,197,94,0.12)' : 'transparent',
+            border: `1px solid ${isCategoryComplete ? 'var(--color-green-border-strong)' : 'var(--border)'}`,
+            background: isCategoryComplete ? 'var(--color-green-bg-strong)' : 'transparent',
             color: isCategoryComplete ? 'var(--color-green)' : 'var(--muted)',
           }}
         >
@@ -81,8 +81,8 @@ export default function CategoryTabSection({
                     style={{
                       padding: '7px 14px', borderRadius: '8px', fontSize: '12px',
                       fontFamily: 'var(--mono)', cursor: 'pointer', transition: 'all .2s', whiteSpace: 'nowrap',
-                      border: `1px solid ${reviewed ? 'rgba(34,197,94,0.35)' : 'var(--border)'}`,
-                      background: reviewed ? 'rgba(34,197,94,0.08)' : 'transparent',
+                      border: `1px solid ${reviewed ? 'var(--color-green-border)' : 'var(--border)'}`,
+                      background: reviewed ? 'var(--color-green-bg)' : 'transparent',
                       color: reviewed ? 'var(--color-green)' : 'var(--dim)',
                     }}
                     onMouseEnter={(e) => {

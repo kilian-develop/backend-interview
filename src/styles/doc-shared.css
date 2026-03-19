@@ -27,7 +27,7 @@
   color: var(--dim); font-size: 12px; font-family: var(--mono);
   cursor: pointer; transition: opacity .2s; white-space: nowrap;
 }
-.doc-layout-header-back:hover { opacity: 0.7; }
+.doc-layout-header-back:hover, .doc-layout-header-back:focus-visible { opacity: 0.7; }
 .doc-layout-header-title {
   flex: 1; min-width: 0;
   font-size: 13px; font-family: var(--mono); color: var(--dim);
@@ -52,13 +52,13 @@
   cursor: pointer; transition: opacity .2s;
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.doc-layout-footer-btn:hover { opacity: 0.6; }
+.doc-layout-footer-btn:hover, .doc-layout-footer-btn:focus-visible { opacity: 0.6; }
 
 @media (max-width: 480px) {
   .doc-layout-header { gap: 8px; padding: 8px 12px; }
-  .doc-layout-header-back { padding: 5px 8px; font-size: 11px; gap: 4px; }
-  .doc-layout-header-title { font-size: 11px; }
-  .doc-layout-header-done { padding: 5px 8px; font-size: 11px; gap: 4px; }
+  .doc-layout-header-back { padding: 8px 12px; font-size: 12px; gap: 4px; min-height: 44px; }
+  .doc-layout-header-title { font-size: 12px; }
+  .doc-layout-header-done { padding: 8px 12px; font-size: 12px; gap: 4px; min-height: 44px; }
   .doc-layout-footer { gap: 8px; padding: 10px 12px; }
   .doc-layout-footer-btn { font-size: 11px; }
 }
@@ -126,7 +126,7 @@
   padding: 20px;
   transition: transform 0.2s, box-shadow 0.2s;
 }
-.doc-card:hover {
+.doc-card:hover, .doc-card:focus-visible {
   transform: translateY(-3px);
 }
 .doc-card-lg {
@@ -293,7 +293,7 @@
     margin-bottom: 36px;
   }
   .doc-hero-tag {
-    font-size: 9px;
+    font-size: 11px;
     letter-spacing: 2px;
   }
   .doc-hero-desc {
@@ -332,11 +332,11 @@
     flex-wrap: wrap;
   }
   .doc-table {
-    font-size: 11px;
+    font-size: 12px;
   }
   .doc-table th,
   .doc-table td {
-    padding: 8px 8px;
+    padding: 10px 8px;
   }
   .doc-grid-auto {
     grid-template-columns: 1fr;

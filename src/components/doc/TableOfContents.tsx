@@ -35,8 +35,8 @@ const CSS = `
   position: fixed;
   right: 24px;
   bottom: 76px;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: rgba(10,14,26,0.92);
@@ -99,10 +99,13 @@ const CSS = `
   gap: 1px;
 }
 .toc-link {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   cursor: pointer;
-  padding: 5px 10px;
+  padding: 8px 10px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
   border-left: 2px solid transparent;
   border-radius: 0 6px 6px 0;
   transition: all .2s;
@@ -111,7 +114,7 @@ const CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.toc-link:hover {
+.toc-link:hover, .toc-link:focus-visible {
   color: var(--dim);
   background: rgba(255,255,255,0.03);
 }
@@ -130,7 +133,7 @@ const CSS = `
   .toc-nav { display: none; }
 }
 @media (max-width: 480px) {
-  .toc-toggle { right: 16px; bottom: 68px; width: 38px; height: 38px; }
+  .toc-toggle { right: 16px; bottom: 68px; width: 44px; height: 44px; }
   .toc-panel { right: 16px; bottom: 116px; width: calc(100vw - 32px); max-height: 45vh; }
 }
 `
