@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { codeToHtml } from 'shiki'
+import { getHighlighter } from '@/lib/shiki'
 
 const LANG_LABELS: Record<string, string> = {
   json: 'JSON', js: 'JavaScript', ts: 'TypeScript', java: 'Java', kotlin: 'Kotlin',
@@ -7,17 +7,35 @@ const LANG_LABELS: Record<string, string> = {
   xml: 'XML', html: 'HTML', dockerfile: 'Dockerfile', properties: 'Properties',
 }
 
+/* 하이라이팅 결과 캐시 — 동일 코드 재렌더링 방지 */
+const htmlCache = new Map<string, string>()
+
 interface CodeSnippetProps { code: string; lang?: string }
 
 export default function CodeSnippet({ code, lang = 'json' }: CodeSnippetProps) {
-  const [html, setHtml] = useState('')
-  const [copied, setCopied] = useState(false)
   const trimmed = code.trim()
   const label = LANG_LABELS[lang] || lang.toUpperCase()
+  const cacheKey = `${lang}:${trimmed}`
+
+  const [html, setHtml] = useState<string | null>(() => htmlCache.get(cacheKey) ?? null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    codeToHtml(trimmed, { lang, theme: 'github-dark-default' }).then(setHtml)
-  }, [trimmed, lang])
+    if (htmlCache.has(cacheKey)) {
+      setHtml(htmlCache.get(cacheKey)!)
+      return
+    }
+
+    let cancelled = false
+    getHighlighter().then((highlighter) => {
+      if (cancelled) return
+      const result = highlighter.codeToHtml(trimmed, { lang, theme: 'github-dark-default' })
+      htmlCache.set(cacheKey, result)
+      setHtml(result)
+    })
+
+    return () => { cancelled = true }
+  }, [trimmed, lang, cacheKey])
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(trimmed).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
@@ -32,7 +50,7 @@ export default function CodeSnippet({ code, lang = 'json' }: CodeSnippetProps) {
         </button>
       </div>
       {html ? (
-        <div style={{ padding: '0' }} dangerouslySetInnerHTML={{ __html: html.replace(/<pre /g, '<pre style="background:transparent;margin:0;padding:14px 18px;line-height:1.8;overflow-x:auto" ').replace(/<code /g, '<code style="font-size:13px;font-family:var(--mono)" ') }} />
+        <div className="cb-shiki" dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
         <div style={{ fontFamily: 'var(--mono)', fontSize: '13px', padding: '14px 18px', lineHeight: 1.8, whiteSpace: 'pre-wrap', color: '#94a3b8' }}>{trimmed}</div>
       )}

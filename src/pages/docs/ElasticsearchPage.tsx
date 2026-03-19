@@ -26,6 +26,25 @@ const sections = {
   'es-vector-search': lazy(() => import('./es/14-vector-search')),
 }
 
+/* 탭 호버 시 프리로드에 사용하는 import 맵 */
+const preloadMap: Record<string, () => Promise<unknown>> = {
+  'es-setup': () => import('./es/00-setup'),
+  'es-what-is': () => import('./es/01-what-is-elasticsearch'),
+  'es-crud-mapping': () => import('./es/02-crud-and-mapping'),
+  'es-search-queries': () => import('./es/03-search-queries'),
+  'es-aggregation': () => import('./es/04-aggregation'),
+  'es-analyzer': () => import('./es/05-analyzer'),
+  'es-index-management': () => import('./es/06-index-management'),
+  'es-advanced-queries': () => import('./es/07-advanced-queries'),
+  'es-pipeline-agg': () => import('./es/08-pipeline-agg'),
+  'es-cluster': () => import('./es/09-cluster'),
+  'es-performance': () => import('./es/10-performance'),
+  'es-spring-data': () => import('./es/11-spring-data-es'),
+  'es-elk-stack': () => import('./es/12-elk-stack'),
+  'es-search-architecture': () => import('./es/13-search-architecture'),
+  'es-vector-search': () => import('./es/14-vector-search'),
+}
+
 const tabGroups = [
   {
     label: '시작하기',
@@ -82,6 +101,7 @@ export default function ElasticsearchPage() {
       sections={sections}
       tabGroups={tabGroups}
       defaultTab="es-setup"
+      preloadMap={preloadMap}
     />
   )
 }

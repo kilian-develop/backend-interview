@@ -24,6 +24,8 @@ interface TabPageProps {
   sections: Record<string, React.LazyExoticComponent<React.ComponentType>>
   tabGroups: TabGroup[]
   defaultTab: string
+  /** 탭 ID → dynamic import 함수. 호버 시 프리로드에 사용 */
+  preloadMap?: Record<string, () => Promise<unknown>>
 }
 
 const buildCSS = (color: string) => `
@@ -51,7 +53,9 @@ const buildCSS = (color: string) => `
 }
 `
 
-export default function TabPage({ slug, accentColor, sections, tabGroups, defaultTab }: TabPageProps) {
+const prefetched = new Set<string>()
+
+export default function TabPage({ slug, accentColor, sections, tabGroups, defaultTab, preloadMap }: TabPageProps) {
   const { isTabReviewed } = useProgressStore()
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.slice(1)
@@ -89,6 +93,12 @@ export default function TabPage({ slug, accentColor, sections, tabGroups, defaul
                   key={tab.id}
                   className={`tp-tab ${activeTab === tab.id ? 'active' : ''} ${reviewed ? 'reviewed' : ''}`}
                   onClick={() => handleTabChange(tab.id)}
+                  onMouseEnter={() => {
+                    if (preloadMap?.[tab.id] && !prefetched.has(tab.id)) {
+                      prefetched.add(tab.id)
+                      preloadMap[tab.id]()
+                    }
+                  }}
                 >
                   {reviewed && <span style={{ fontSize: '10px', marginRight: '2px' }}>✓</span>}
                   <span className="tp-tab-icon">{tab.icon}</span>

@@ -1,4 +1,69 @@
-/* Doc Page Shared Styles */
+/* ══════════════════════════════════════════════
+   Doc Page Shared Styles
+   CSS 변수 참조: index.css :root
+   ══════════════════════════════════════════════ */
+
+/* ── DocLayout: Header / Footer / Progress ── */
+
+.doc-layout-header {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px;
+  border-bottom: none;
+  background: rgba(5, 7, 15, 0.85); backdrop-filter: blur(12px);
+}
+.doc-progress-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px; background: var(--card-border);
+}
+.doc-progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--color-blue), var(--color-purple));
+}
+.doc-layout-header-back {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 8px;
+  border: 1px solid var(--card-border); background: var(--surface);
+  color: var(--dim); font-size: 12px; font-family: var(--mono);
+  cursor: pointer; transition: opacity .2s; white-space: nowrap;
+}
+.doc-layout-header-back:hover { opacity: 0.7; }
+.doc-layout-header-title {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-family: var(--mono); color: var(--dim);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.doc-layout-header-done {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 8px;
+  font-size: 12px; font-family: var(--mono);
+  cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.doc-layout-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 12px 20px;
+  border-top: 1px solid var(--card-border);
+  background: rgba(5, 7, 15, 0.85); backdrop-filter: blur(12px);
+}
+.doc-layout-footer-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: none;
+  color: var(--dim); font-size: 12px; font-family: var(--mono);
+  cursor: pointer; transition: opacity .2s;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.doc-layout-footer-btn:hover { opacity: 0.6; }
+
+@media (max-width: 480px) {
+  .doc-layout-header { gap: 8px; padding: 8px 12px; }
+  .doc-layout-header-back { padding: 5px 8px; font-size: 11px; gap: 4px; }
+  .doc-layout-header-title { font-size: 11px; }
+  .doc-layout-header-done { padding: 5px 8px; font-size: 11px; gap: 4px; }
+  .doc-layout-footer { gap: 8px; padding: 10px 12px; }
+  .doc-layout-footer-btn { font-size: 11px; }
+}
+
+/* ── Page Content ── */
 
 .doc-wrap {
   max-width: 1080px;
@@ -22,12 +87,12 @@
   font-size: 10px;
   letter-spacing: 4px;
   text-transform: uppercase;
-  color: #5a6a85;
+  color: var(--text-muted);
   margin-bottom: 14px;
 }
 .doc-hero-desc {
   font-size: 14px;
-  color: #5a6a85;
+  color: var(--text-muted);
   line-height: 1.8;
 }
 
@@ -42,7 +107,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #cbd5e1;
+  color: var(--text-primary);
   scroll-margin-top: 64px;
 }
 .doc-sec-title::before {
@@ -55,9 +120,9 @@
 
 /* Cards */
 .doc-card {
-  background: #0e1118;
-  border: 1px solid #1a2234;
-  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
   padding: 20px;
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -81,9 +146,9 @@
   font-size: 11px;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: #5a6a85;
+  color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
-  border-bottom: 1px solid #1a2234;
+  border-bottom: 1px solid var(--card-border);
 }
 .doc-table td {
   padding: 12px 16px;
@@ -99,7 +164,7 @@
   border-radius: 10px;
   padding: 16px 18px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   line-height: 1.8;
 }
 
@@ -134,9 +199,9 @@
 
 /* Interview Q&A */
 .doc-qa-item {
-  background: #0e1118;
-  border: 1px solid #1a2234;
-  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
   padding: 20px;
 }
 .doc-qa-question {
@@ -146,7 +211,7 @@
 }
 .doc-qa-answer {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   line-height: 1.8;
 }
 

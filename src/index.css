@@ -7,16 +7,42 @@
 @tailwind utilities;
 
 :root {
+  /* ── 기본 배경/텍스트 ── */
   --bg: #05070f;
   --surface: #0a0e1a;
   --border: #1a2540;
   --text: #dde4f0;
   --muted: #3d5070;
   --dim: #8aa0c0;
+
+  /* ── 카드 ── */
+  --card-bg: #0e1118;
+  --card-border: #1a2234;
+  --card-radius: 14px;
+
+  /* ── 코드 블록 ── */
+  --code-bg: #0a0d14;
+  --code-header: #0f1219;
+
+  /* ── 텍스트 계층 ── */
+  --text-primary: #cbd5e1;
+  --text-secondary: #94a3b8;
+  --text-muted: #5a6a85;
+
+  /* ── 시맨틱 색상 ── */
+  --color-blue: #3b82f6;
+  --color-cyan: #06b6d4;
+  --color-purple: #a855f7;
+  --color-green: #22c55e;
+  --color-amber: #f59e0b;
+  --color-red: #ef4444;
+  --color-gold: #f0c040;
+
+  /* ── 폰트 ── */
   --sans: 'Noto Sans KR', sans-serif;
   --mono: 'JetBrains Mono', monospace;
 
-  /* ES 컴포넌트용 Tailwind 매핑 변수 */
+  /* ── ES Tailwind 매핑 ── */
   --es-surface: #0a0e1a;
   --es-surface-2: #141a2a;
   --es-lab-bg: #0d1117;
