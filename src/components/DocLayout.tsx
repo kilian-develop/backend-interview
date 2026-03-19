@@ -67,13 +67,15 @@ const LAYOUT_CSS = `
 
 interface DocLayoutProps {
   slug: string
+  activeTab?: string
   children: React.ReactNode
 }
 
-export default function DocLayout({ slug, children }: DocLayoutProps) {
+export default function DocLayout({ slug, activeTab, children }: DocLayoutProps) {
   const navigate = useNavigate()
-  const { isReviewed, toggleReviewed } = useProgressStore()
-  const reviewed = isReviewed(slug)
+  const { isTabReviewed, toggleTab, getCategoryProgress } = useProgressStore()
+  const reviewed = activeTab ? isTabReviewed(slug, activeTab) : false
+  const { done, total } = getCategoryProgress(slug)
   const [progress, setProgress] = useState(0)
   useInjectCSS('style-doc-layout', LAYOUT_CSS)
 
@@ -109,19 +111,24 @@ export default function DocLayout({ slug, children }: DocLayoutProps) {
 
         <span className="doc-layout-header-title">
           {current?.title ?? ''}
+          <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--muted)' }}>
+            {done}/{total}
+          </span>
         </span>
 
-        <button
-          className="doc-layout-header-done"
-          onClick={() => toggleReviewed(slug)}
-          style={{
-            border: `1px solid ${reviewed ? 'rgba(34,197,94,0.4)' : 'var(--border)'}`,
-            background: reviewed ? 'rgba(34,197,94,0.12)' : 'var(--surface)',
-            color: reviewed ? '#22c55e' : 'var(--dim)',
-          }}
-        >
-          {reviewed ? '✓ 완료' : '완료 표시'}
-        </button>
+        {activeTab && (
+          <button
+            className="doc-layout-header-done"
+            onClick={() => toggleTab(slug, activeTab)}
+            style={{
+              border: `1px solid ${reviewed ? 'rgba(34,197,94,0.4)' : 'var(--border)'}`,
+              background: reviewed ? 'rgba(34,197,94,0.12)' : 'var(--surface)',
+              color: reviewed ? '#22c55e' : 'var(--dim)',
+            }}
+          >
+            {reviewed ? '✓ 학습 완료' : '학습 완료'}
+          </button>
+        )}
         {/* 스크롤 프로그래스 바 */}
         <div className="doc-progress-bar">
           <div className="doc-progress-fill" style={{ width: `${progress}%` }} />

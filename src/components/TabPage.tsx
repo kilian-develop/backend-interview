@@ -5,6 +5,7 @@ import DocSkeleton from './DocSkeleton'
 import TableOfContents from './doc/TableOfContents'
 import ScrollToTopButton from './doc/ScrollToTopButton'
 import { useInjectCSS } from '../hooks/useInjectCSS'
+import { useProgressStore } from '../stores/useProgressStore'
 
 interface Tab {
   id: string
@@ -32,6 +33,8 @@ const buildCSS = (color: string) => `
 .tp-tab { flex-shrink:0; display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--dim); font-size:11px; font-family:var(--mono); cursor:pointer; transition:all .2s; white-space:nowrap; }
 .tp-tab:hover { border-color:${color}4D; background:${color}0D; }
 .tp-tab.active { border-color:${color}80; background:${color}1A; color:${color}; }
+.tp-tab.reviewed { border-color:rgba(34,197,94,0.35); background:rgba(34,197,94,0.08); color:#22c55e; }
+.tp-tab.active.reviewed { border-color:${color}80; background:${color}1A; color:${color}; }
 .tp-tab-icon { font-size:13px; }
 @media (max-width:480px) {
   .tp-groups { padding:8px 10px 0; gap:6px; }
@@ -49,6 +52,7 @@ const buildCSS = (color: string) => `
 `
 
 export default function TabPage({ slug, accentColor, sections, tabGroups, defaultTab }: TabPageProps) {
+  const { isTabReviewed } = useProgressStore()
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.slice(1)
     return hash && hash in sections ? hash : defaultTab
@@ -73,21 +77,25 @@ export default function TabPage({ slug, accentColor, sections, tabGroups, defaul
   const ActiveSection = sections[activeTab]
 
   return (
-    <DocLayout slug={slug}>
+    <DocLayout slug={slug} activeTab={activeTab}>
       <div className="tp-groups">
         {tabGroups.map((group) => (
           <div key={group.label} className="tp-group">
             <span className="tp-group-label">{group.label}</span>
-            {group.tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`tp-tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => handleTabChange(tab.id)}
-              >
-                <span className="tp-tab-icon">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
+            {group.tabs.map((tab) => {
+              const reviewed = isTabReviewed(slug, tab.id)
+              return (
+                <button
+                  key={tab.id}
+                  className={`tp-tab ${activeTab === tab.id ? 'active' : ''} ${reviewed ? 'reviewed' : ''}`}
+                  onClick={() => handleTabChange(tab.id)}
+                >
+                  {reviewed && <span style={{ fontSize: '10px', marginRight: '2px' }}>✓</span>}
+                  <span className="tp-tab-icon">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              )
+            })}
           </div>
         ))}
       </div>

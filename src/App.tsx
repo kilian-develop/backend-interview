@@ -22,6 +22,7 @@ const SecurityPage = lazy(() => import('./pages/docs/SecurityPage'))
 const PortfolioPage = lazy(() => import('./pages/docs/PortfolioPage'))
 const KafkaPage = lazy(() => import('./pages/docs/KafkaPage'))
 const DatabasePage = lazy(() => import('./pages/docs/DatabasePage'))
+const ElasticsearchPage = lazy(() => import('./pages/docs/ElasticsearchPage'))
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/docs/portfolio" element={<PortfolioPage />} />
           <Route path="/docs/kafka" element={<KafkaPage />} />
           <Route path="/docs/database" element={<DatabasePage />} />
+          <Route path="/docs/elasticsearch" element={<ElasticsearchPage />} />
         </Routes>
       </Suspense>
       <Toaster

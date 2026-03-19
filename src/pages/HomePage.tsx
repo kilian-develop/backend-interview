@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import Fuse from 'fuse.js'
-import { CATEGORIES, ALL_TOPICS, ALL_TABS } from '../data/categories'
+import { CATEGORIES, ALL_TABS } from '../data/categories'
 import SearchBar from '../components/SearchBar'
 import { useProgressStore } from '../stores/useProgressStore'
 
@@ -16,9 +16,7 @@ const tabFuse = new Fuse(ALL_TABS, {
 export default function HomePage() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const { isReviewed, toggleReviewed, reviewedCount } = useProgressStore()
-
-  const totalTopics = ALL_TOPICS.length
+  const { isTabReviewed, toggleCategory, isCategoryComplete, getCategoryProgress, totalReviewedTabs, totalTabs } = useProgressStore()
 
   const matchedTabIds = useMemo(() => {
     if (!query.trim()) return null
@@ -196,16 +194,16 @@ export default function HomePage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', marginBottom: '56px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 'clamp(18px, 4vw, 26px)', fontWeight: 700, color: '#3b82f6' }}>
-              {totalTopics}
+              {totalTabs()}
             </span>
-            <span style={{ fontSize: '11px', letterSpacing: '1px', color: 'var(--muted)' }}>전체 주제</span>
+            <span style={{ fontSize: '11px', letterSpacing: '1px', color: 'var(--muted)' }}>전체 탭</span>
           </div>
           <div style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border)' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 'clamp(18px, 4vw, 26px)', fontWeight: 700, color: '#22c55e' }}>
-              {reviewedCount()}
+              {totalReviewedTabs()}
             </span>
-            <span style={{ fontSize: '11px', letterSpacing: '1px', color: 'var(--muted)' }}>완료한 주제</span>
+            <span style={{ fontSize: '11px', letterSpacing: '1px', color: 'var(--muted)' }}>학습 완료</span>
           </div>
         </div>
 
@@ -230,8 +228,10 @@ export default function HomePage() {
                 color={cat.color}
                 slug={topic.slug}
                 tabGroups={topic.tabGroups}
-                isReviewed={isReviewed(topic.slug)}
-                onToggleReviewed={() => toggleReviewed(topic.slug)}
+                isCategoryComplete={isCategoryComplete(topic.slug)}
+                onToggleCategory={() => toggleCategory(topic.slug)}
+                getCategoryProgress={getCategoryProgress}
+                isTabReviewed={isTabReviewed}
               />
             )),
           )}
@@ -252,7 +252,7 @@ export default function HomePage() {
           }}
         >
           <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--muted)' }}>
-            interview-prep · 총 {totalTopics}개 주제
+            interview-prep · 총 {totalTabs()}개 탭
           </span>
           <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
             마지막 업데이트: 2026년 3월
@@ -269,19 +269,25 @@ function CategoryTabSection({
   color,
   slug,
   tabGroups,
-  isReviewed,
-  onToggleReviewed,
+  isCategoryComplete,
+  onToggleCategory,
+  getCategoryProgress,
+  isTabReviewed,
 }: {
   icon: string
   title: string
   color: string
   slug: string
   tabGroups: { label: string; tabs: { id: string; label: string }[] }[]
-  isReviewed: boolean
-  onToggleReviewed: () => void
+  isCategoryComplete: boolean
+  onToggleCategory: () => void
+  getCategoryProgress: (slug: string) => { done: number; total: number }
+  isTabReviewed: (slug: string, tabId: string) => boolean
 }) {
   const navigate = useNavigate()
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.05 })
+  const { done, total } = getCategoryProgress(slug)
+  const pct = total > 0 ? (done / total) * 100 : 0
 
   return (
     <motion.div
@@ -298,12 +304,15 @@ function CategoryTabSection({
       }}
     >
       {/* 헤더 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
         <span style={{ fontSize: '22px' }}>{icon}</span>
         <span style={{ fontSize: '16px', fontWeight: 700, color }}>{title}</span>
+        <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--muted)' }}>
+          {done}/{total}
+        </span>
         <div style={{ flex: 1, height: '1px', background: `linear-gradient(to right, ${color}33, transparent)` }} />
         <button
-          onClick={(e) => { e.stopPropagation(); onToggleReviewed() }}
+          onClick={(e) => { e.stopPropagation(); onToggleCategory() }}
           style={{
             padding: '4px 12px',
             borderRadius: '6px',
@@ -311,13 +320,30 @@ function CategoryTabSection({
             fontFamily: 'var(--mono)',
             cursor: 'pointer',
             transition: 'all .2s',
-            border: `1px solid ${isReviewed ? 'rgba(34,197,94,0.4)' : 'var(--border)'}`,
-            background: isReviewed ? 'rgba(34,197,94,0.12)' : 'transparent',
-            color: isReviewed ? '#22c55e' : 'var(--muted)',
+            border: `1px solid ${isCategoryComplete ? 'rgba(34,197,94,0.4)' : 'var(--border)'}`,
+            background: isCategoryComplete ? 'rgba(34,197,94,0.12)' : 'transparent',
+            color: isCategoryComplete ? '#22c55e' : 'var(--muted)',
           }}
         >
-          {isReviewed ? '✓ 완료' : '완료'}
+          {isCategoryComplete ? '✓ 전체 완료' : '전체 완료'}
         </button>
+      </div>
+
+      {/* 진행률 바 */}
+      <div style={{
+        height: '3px',
+        borderRadius: '2px',
+        background: 'var(--border)',
+        marginBottom: '20px',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%',
+          width: `${pct}%`,
+          borderRadius: '2px',
+          background: color,
+          transition: 'width 0.3s ease',
+        }} />
       </div>
 
       {/* 탭 그룹들 */}
@@ -338,36 +364,44 @@ function CategoryTabSection({
               {group.label}
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {group.tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => navigate(`/docs/${slug}#${tab.id}`)}
-                  style={{
-                    padding: '7px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    background: 'transparent',
-                    color: 'var(--dim)',
-                    fontSize: '12px',
-                    fontFamily: 'var(--mono)',
-                    cursor: 'pointer',
-                    transition: 'all .2s',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = `${color}80`
-                    e.currentTarget.style.background = `${color}14`
-                    e.currentTarget.style.color = color
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = 'var(--dim)'
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
+              {group.tabs.map((tab) => {
+                const reviewed = isTabReviewed(slug, tab.id)
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => navigate(`/docs/${slug}#${tab.id}`)}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: '8px',
+                      border: `1px solid ${reviewed ? 'rgba(34,197,94,0.35)' : 'var(--border)'}`,
+                      background: reviewed ? 'rgba(34,197,94,0.08)' : 'transparent',
+                      color: reviewed ? '#22c55e' : 'var(--dim)',
+                      fontSize: '12px',
+                      fontFamily: 'var(--mono)',
+                      cursor: 'pointer',
+                      transition: 'all .2s',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!reviewed) {
+                        e.currentTarget.style.borderColor = `${color}80`
+                        e.currentTarget.style.background = `${color}14`
+                        e.currentTarget.style.color = color
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!reviewed) {
+                        e.currentTarget.style.borderColor = 'var(--border)'
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.color = 'var(--dim)'
+                      }
+                    }}
+                  >
+                    {reviewed && <span style={{ marginRight: '4px' }}>✓</span>}
+                    {tab.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         ))}

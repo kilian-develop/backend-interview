@@ -181,6 +181,70 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'elasticsearch',
+    label: 'Elasticsearch',
+    title: 'Elasticsearch',
+    color: '#f0c040',
+    glow: 'rgba(240,192,64,0.22)',
+    dim: 'rgba(240,192,64,0.08)',
+    topics: [
+      {
+        slug: 'elasticsearch',
+        icon: '🔍',
+        tag: 'ES · 역색인 · Query DSL · 집계',
+        title: 'Elasticsearch',
+        desc: '역색인 원리부터 CRUD, 검색 쿼리, 집계, 분석기, 클러스터, Spring 연동, ELK, Vector Search까지',
+        tabGroups: [
+          {
+            label: '시작하기',
+            tabs: [
+              { id: 'es-setup', label: '학습환경 세팅' },
+            ],
+          },
+          {
+            label: '입문',
+            tabs: [
+              { id: 'es-what-is', label: 'Elasticsearch란?' },
+              { id: 'es-crud-mapping', label: 'CRUD와 매핑' },
+              { id: 'es-search-queries', label: '검색 쿼리' },
+            ],
+          },
+          {
+            label: '초급',
+            tabs: [
+              { id: 'es-aggregation', label: '집계' },
+              { id: 'es-analyzer', label: '분석기 심화' },
+              { id: 'es-index-management', label: '인덱스 관리' },
+            ],
+          },
+          {
+            label: '중급',
+            tabs: [
+              { id: 'es-advanced-queries', label: '복합 쿼리' },
+              { id: 'es-pipeline-agg', label: 'Pipeline Aggregation' },
+            ],
+          },
+          {
+            label: '고급',
+            tabs: [
+              { id: 'es-cluster', label: '클러스터 아키텍처' },
+              { id: 'es-performance', label: '성능 튜닝' },
+              { id: 'es-spring-data', label: 'Spring Data ES' },
+            ],
+          },
+          {
+            label: '심화',
+            tabs: [
+              { id: 'es-elk-stack', label: 'ELK Stack' },
+              { id: 'es-search-architecture', label: '검색 서비스 아키텍처' },
+              { id: 'es-vector-search', label: 'Vector Search' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'portfolio',
     label: 'Portfolio',
     title: '포트폴리오 면접',

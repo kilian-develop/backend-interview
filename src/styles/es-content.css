@@ -1,0 +1,314 @@
+/*
+ * Elasticsearch 챕터 콘텐츠 정규화
+ * 챕터 JSX 내부의 Tailwind 유틸리티를 기존 사이트 디자인에 맞게 오버라이드
+ */
+
+/* ── 타이포그래피 ── */
+.es-content p {
+  font-size: 13px !important;
+  color: #94a3b8 !important;
+  line-height: 1.8 !important;
+  margin-bottom: 16px !important;
+}
+
+.es-content strong {
+  color: var(--text) !important;
+  font-weight: 600 !important;
+}
+
+.es-content h3 {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  margin-bottom: 16px !important;
+  line-height: 1.5 !important;
+}
+
+.es-content h4 {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  margin-bottom: 12px !important;
+}
+
+.es-content a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.es-content a:hover {
+  text-decoration: underline;
+}
+
+/* ── 인라인 코드 ── */
+.es-content code {
+  font-family: var(--mono) !important;
+  font-size: 12px !important;
+  background: #0e1118 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  border: 1px solid #1a2234 !important;
+  color: #e2e8f0 !important;
+}
+
+/* 코드블록 내부의 code는 리셋 */
+.es-content pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* ── 리스트 ── */
+.es-content ul,
+.es-content ol {
+  font-size: 13px !important;
+  color: #94a3b8 !important;
+  line-height: 1.8 !important;
+  padding-left: 20px !important;
+  margin-bottom: 16px !important;
+}
+
+.es-content li {
+  margin-bottom: 6px !important;
+  font-size: 13px !important;
+}
+
+.es-content li strong {
+  color: var(--text) !important;
+}
+
+/* ── 카드/박스 (챕터 내 인라인 div) ── */
+
+/* bg-surface, bg-surface-2 오버라이드 */
+.es-content > div[class*="bg-surface"],
+.es-content > div[class*="bg-lab"] {
+  background: #0e1118 !important;
+  border-color: #1a2234 !important;
+  border-radius: 14px !important;
+  padding: 22px !important;
+  margin: 20px 0 !important;
+}
+
+/* rounded-2xl, rounded-xl 카드들 */
+.es-content > div[class*="rounded-2xl"],
+.es-content > div[class*="rounded-xl"] {
+  background: #0e1118 !important;
+  border-color: #1a2234 !important;
+  border-radius: 14px !important;
+  margin: 20px 0 !important;
+}
+
+/* ── 테두리 정규화 ── */
+
+/* border-b border-border → 점선으로 연하게 */
+.es-content [class*="border-b"][class*="border-border"] {
+  border-bottom-color: rgba(26, 37, 64, 0.5) !important;
+  border-bottom-style: dashed !important;
+}
+
+/* border-border 일반 */
+.es-content [class*="border-border"] {
+  border-color: #1a2234 !important;
+}
+
+/* ── 그래디언트 바 ── */
+.es-content div[class*="h-\\[3px\\]"][class*="bg-gradient"] {
+  height: 3px !important;
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── 숫자 뱃지 (w-7 h-7 rounded-full) ── */
+.es-content div[class*="rounded-full"][class*="flex"][class*="items-center"][class*="justify-center"] {
+  width: 28px !important;
+  height: 28px !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+/* ── 텍스트 크기 오버라이드 ── */
+.es-content [class*="text-\\[1.05rem\\]"],
+.es-content [class*="text-\\[0.95rem\\]"],
+.es-content [class*="text-\\[0.9rem\\]"],
+.es-content [class*="text-\\[0.88rem\\]"],
+.es-content [class*="text-\\[0.85rem\\]"] {
+  font-size: 13px !important;
+}
+
+.es-content [class*="text-xl"] {
+  font-size: 15px !important;
+}
+
+.es-content [class*="text-lg"] {
+  font-size: 14px !important;
+}
+
+.es-content [class*="text-3xl"] {
+  font-size: 20px !important;
+}
+
+/* ── 텍스트 색상 오버라이드 ── */
+.es-content [class*="text-text-dim"] {
+  color: #94a3b8 !important;
+}
+
+.es-content [class*="text-text"] {
+  color: var(--text) !important;
+}
+
+/* ES 테마색 정규화 */
+.es-content [class*="text-accent"] {
+  color: #f0c040 !important;
+}
+
+.es-content [class*="text-es-red"] {
+  color: #ef4444 !important;
+}
+
+.es-content [class*="text-es-green"] {
+  color: #22c55e !important;
+}
+
+.es-content [class*="text-es-blue"] {
+  color: #3b82f6 !important;
+}
+
+.es-content [class*="text-es-purple"] {
+  color: #a855f7 !important;
+}
+
+.es-content [class*="text-es-orange"] {
+  color: #f59e0b !important;
+}
+
+.es-content [class*="text-es-cyan"] {
+  color: #06b6d4 !important;
+}
+
+/* ── bg 색상 오버라이드 ── */
+.es-content [class*="bg-es-red\\/"] {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+}
+
+.es-content [class*="bg-es-green\\/"] {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+}
+
+.es-content [class*="bg-es-blue\\/"] {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+.es-content [class*="bg-es-purple\\/"] {
+  background-color: rgba(168, 85, 247, 0.12) !important;
+}
+
+.es-content [class*="bg-es-orange\\/"] {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+.es-content [class*="bg-es-cyan\\/"] {
+  background-color: rgba(6, 182, 212, 0.12) !important;
+}
+
+.es-content [class*="bg-accent\\/"],
+.es-content [class*="bg-accent-glow"] {
+  background-color: rgba(240, 192, 64, 0.12) !important;
+}
+
+.es-content [class*="bg-surface-2"] {
+  background: #0e1118 !important;
+}
+
+.es-content [class*="bg-surface"] {
+  background: #0e1118 !important;
+}
+
+/* ── 테이블 ── */
+.es-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  border: 1px solid #1a2234;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.es-content th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #5a6a85;
+  font-family: var(--mono);
+  font-weight: 700;
+  border-bottom: 1px solid #1a2234;
+  background: #0a0d14;
+}
+
+.es-content td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.es-content tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ── 그리드 정규화 ── */
+.es-content [class*="grid"][class*="gap"] {
+  gap: 12px !important;
+}
+
+/* ── 패딩/마진 정규화 ── */
+.es-content [class*="p-10"] {
+  padding: 22px !important;
+}
+
+.es-content [class*="p-8"] {
+  padding: 20px !important;
+}
+
+.es-content [class*="px-8"] {
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}
+
+.es-content [class*="py-8"] {
+  padding-top: 20px !important;
+  padding-bottom: 20px !important;
+}
+
+.es-content [class*="my-10"] {
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+}
+
+/* ── font-mono 정규화 ── */
+.es-content [class*="font-mono"] {
+  font-family: var(--mono) !important;
+}
+
+/* ── 간격 정규화 (mb-6 → 16px) ── */
+.es-content [class*="mb-6"] {
+  margin-bottom: 16px !important;
+}
+
+.es-content [class*="mb-8"] {
+  margin-bottom: 20px !important;
+}
+
+/* ── 반응형 ── */
+@media (max-width: 640px) {
+  .es-content > div[class*="grid"][class*="sm\\:grid-cols"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .es-content {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
