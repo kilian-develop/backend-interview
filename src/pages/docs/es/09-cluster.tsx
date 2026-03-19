@@ -7,6 +7,116 @@ import LabBanner from "@/components/es/content/LabBanner";
 import Checkpoint from "@/components/es/content/Checkpoint";
 import { ExplainCallout, WarnCallout } from "@/components/es/content/Callouts";
 import QaBox from "@/components/es/content/QaBox";
+import { DiagramContainer, DiagramNode, DiagramArrow, DiagramFlow, DiagramGroup } from "@/components/doc/Diagram";
+
+/* ─── Cluster Architecture Diagram ─── */
+
+function ClusterArchitectureDiagram() {
+  return (
+    <DiagramContainer title="Elasticsearch Cluster Architecture">
+      <DiagramFlow vertical>
+        {/* Client */}
+        <DiagramNode icon="💻" label="Client" sub="Application / API" color="#94a3b8" />
+
+        <DiagramArrow label="HTTP REST" color="#94a3b8" vertical animated />
+
+        {/* Coordinating */}
+        <DiagramGroup label="Coordinating Layer" color="#3b82f6">
+          <DiagramFlow>
+            <DiagramNode icon="🔀" label="Coordinating" sub="요청 분배 & 결과 병합" color="#3b82f6" />
+          </DiagramFlow>
+        </DiagramGroup>
+
+        <DiagramArrow label="scatter / gather" color="#3b82f6" vertical animated />
+
+        {/* Cluster */}
+        <DiagramGroup label="Elasticsearch Cluster" color="#f0c040" style={{ padding: '20px 16px 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Master */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
+              <DiagramGroup label="Master (Quorum)" color="#a855f7">
+                <DiagramFlow>
+                  <DiagramNode icon="👑" label="Master 1" sub="Active" color="#a855f7" />
+                  <DiagramNode icon="👑" label="Master 2" sub="Standby" color="#a855f7" style={{ opacity: 0.6 }} />
+                  <DiagramNode icon="👑" label="Master 3" sub="Standby" color="#a855f7" style={{ opacity: 0.6 }} />
+                </DiagramFlow>
+              </DiagramGroup>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <DiagramArrow label="클러스터 상태 관리" color="#a855f7" vertical animated length={20} />
+            </div>
+
+            {/* Data Nodes */}
+            <DiagramFlow wrap style={{ justifyContent: 'center', gap: '12px' }}>
+              {/* Node 1 */}
+              <DiagramGroup label="Data Node 1" color="#22c55e">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '120px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}>P0</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}>P1</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>R3</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>R4</span>
+                  </div>
+                </div>
+              </DiagramGroup>
+
+              {/* Node 2 */}
+              <DiagramGroup label="Data Node 2" color="#22c55e">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '120px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}>P2</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}>P3</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>R0</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>R1</span>
+                  </div>
+                </div>
+              </DiagramGroup>
+
+              {/* Node 3 */}
+              <DiagramGroup label="Data Node 3" color="#22c55e">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '120px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}>P4</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>R2</span>
+                  </div>
+                </div>
+              </DiagramGroup>
+            </DiagramFlow>
+
+            {/* Ingest */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
+              <DiagramGroup label="Ingest Pipeline" color="#f59e0b">
+                <DiagramFlow>
+                  <DiagramNode icon="⚙️" label="Ingest Node" sub="전처리 · 변환 · 보강" color="#f59e0b" />
+                </DiagramFlow>
+              </DiagramGroup>
+            </div>
+          </div>
+        </DiagramGroup>
+      </DiagramFlow>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '16px', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Primary Shard', color: '#3b82f6' },
+          { label: 'Replica Shard', color: '#f59e0b' },
+          { label: 'Master Node', color: '#a855f7' },
+          { label: 'Data Node', color: '#22c55e' },
+        ].map((item) => (
+          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: `${item.color}30`, border: `1.5px solid ${item.color}` }} />
+            <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: '#64748b' }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </DiagramContainer>
+  )
+}
 
 /* ─── Inline visuals ─── */
 
@@ -419,6 +529,8 @@ export default function Chapter09() {
         <p className="text-text-dim text-lg mb-6">
           소규모 클러스터에서는 한 노드가 여러 역할을 겸하지만, <span className="text-accent font-medium">프로덕션 환경</span>에서는 역할별로 전용 노드를 분리하는 것이 안정적입니다.
         </p>
+
+        <ClusterArchitectureDiagram />
 
         <NodeRoleCards />
 
