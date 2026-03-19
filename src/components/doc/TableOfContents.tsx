@@ -17,7 +17,7 @@ const CSS = `
   position: fixed;
   right: 20px;
   top: 72px;
-  width: 180px;
+  width: clamp(160px, 12vw, 220px);
   max-height: calc(100vh - 120px);
   overflow-y: auto;
   background: rgba(10,14,26,0.88);
@@ -27,6 +27,7 @@ const CSS = `
   padding: 14px;
   z-index: 40;
   scrollbar-width: none;
+  display: none;
 }
 .toc-nav::-webkit-scrollbar { display: none; }
 
@@ -49,17 +50,17 @@ const CSS = `
   justify-content: center;
   transition: border-color .2s, color .2s;
 }
-.toc-toggle:hover {
+.toc-toggle:hover, .toc-toggle:focus-visible {
   border-color: var(--toc-ac);
   color: var(--toc-ac);
 }
 
-/* ── Mobile panel ── */
+/* ── Floating panel (tablet/mobile) ── */
 .toc-panel {
   position: fixed;
   right: 24px;
   bottom: 128px;
-  width: 220px;
+  width: 240px;
   max-height: 50vh;
   overflow-y: auto;
   background: rgba(10,14,26,0.95);
@@ -83,7 +84,7 @@ const CSS = `
 
 /* ── Shared ── */
 .toc-label {
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--mono);
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -125,15 +126,37 @@ const CSS = `
 }
 
 /* ── Responsive ── */
-@media (min-width: 1500px) {
-  .toc-nav { display: block; }
+
+/* 울트라와이드: 넓은 사이드바 */
+@media (min-width: 2200px) {
+  .toc-nav { display: block; width: 300px; right: 48px; padding: 20px; }
+  .toc-nav .toc-label { font-size: 12px; margin-bottom: 14px; }
+  .toc-nav .toc-link { font-size: 14px; padding: 10px 14px; min-height: 40px; }
   .toc-toggle, .toc-panel { display: none !important; }
 }
-@media (max-width: 1499px) {
+
+/* 와이드: 사이드바 표시 */
+@media (min-width: 1800px) and (max-width: 2199px) {
+  .toc-nav { display: block; width: 260px; right: 32px; padding: 16px; }
+  .toc-nav .toc-link { font-size: 13px; padding: 9px 12px; min-height: 38px; }
+  .toc-toggle, .toc-panel { display: none !important; }
+}
+
+/* 데스크톱: 콤팩트 사이드바 */
+@media (min-width: 1400px) and (max-width: 1799px) {
+  .toc-nav { display: block; width: 180px; right: 16px; padding: 12px; }
+  .toc-nav .toc-link { font-size: 12px; padding: 7px 10px; min-height: 34px; }
+  .toc-toggle, .toc-panel { display: none !important; }
+}
+
+/* 태블릿/랩탑: 토글 + 패널 */
+@media (max-width: 1399px) {
   .toc-nav { display: none; }
 }
+
+/* 모바일 */
 @media (max-width: 480px) {
-  .toc-toggle { right: 16px; bottom: 68px; width: 44px; height: 44px; }
+  .toc-toggle { right: 16px; bottom: 68px; }
   .toc-panel { right: 16px; bottom: 116px; width: calc(100vw - 32px); max-height: 45vh; }
 }
 `
