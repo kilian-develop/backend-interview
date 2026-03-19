@@ -8,10 +8,31 @@ export function SectionLabel({ children, lab }: { children: React.ReactNode; lab
   )
 }
 
+/* children에서 텍스트만 추출 (br 등 JSX 무시) */
+function extractText(node: React.ReactNode): string {
+  if (typeof node === 'string') return node
+  if (typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(extractText).join('')
+  if (node && typeof node === 'object' && 'props' in node) {
+    return extractText((node as React.ReactElement).props.children)
+  }
+  return ''
+}
+
+let sectionCounter = 0
+
 export function SectionTitle({ children }: { children: React.ReactNode }) {
+  const text = extractText(children).trim()
+  const id = text
+    ? text.replace(/[^a-zA-Z0-9가-힣\s]/g, '').replace(/\s+/g, '-').toLowerCase()
+    : `es-sec-${++sectionCounter}`
+
   return (
-    <h2 style={{ position: 'relative', fontSize: '17px', fontWeight: 700, color: '#cbd5e1', marginBottom: '24px', paddingLeft: '14px', lineHeight: 1.5 }}>
-      <span style={{ position: 'absolute', left: 0, top: '2px', width: '4px', height: '18px', borderRadius: '2px', background: 'linear-gradient(to bottom, #f0c040, #f59e0b)' }} />
+    <h2
+      id={id}
+      className="doc-sec-title"
+      style={{ '--sec-gradient': 'linear-gradient(to bottom, #f0c040, #f59e0b)' } as React.CSSProperties}
+    >
       {children}
     </h2>
   )
